@@ -118,9 +118,9 @@ class InterviewBrain:
             - Key Requirements: {', '.join(requirements)}
             
             INTERVIEW STRATEGY (Total 6 Questions):
-            1.  **Questions 1 & 2 (Job Fit)**: Ask questions strictly about the Role Objectives and Challenges. Verify if they understand the job's core mission.
-            2.  **Questions 3 & 4 (Skill Fit)**: Ask technical questions strictly based on the skills found in their CV. Verify their claimed expertise.
-            3.  **Questions 5 & 6 (Synergy)**: Ask questions about how their specific skills (CV) can solve the specific problems (Job Description). Test their strategic thinking.
+            1.  **Questions 1 & 2 (Skill Fit)**: Ask technical questions strictly based on the skills found in their RESUME/CV. Verify their claimed expertise first.
+            2.  **Questions 3 & 4 (Company Vision)**: Ask questions strictly about the Role Objectives and Company Goals from the Job Description. Verify if they align with the vision.
+            3.  **Questions 5 & 6 (Utility/Synergy)**: Ask questions about how their specific skills will be useful for this specific project. "How will you help us achieve X?"
             
             Process:
             - Ask ONE question at a time.
@@ -137,7 +137,7 @@ class InterviewBrain:
             {"role": "system", "content": system_instruction}
         ]
         
-        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question (Phase 1: Job Fit)."
+        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question (Phase 1: Resume Skills)."
         
         # Add the context as a user message to trigger the start
         self.history.append({"role": "user", "content": initial_message})

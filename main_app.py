@@ -109,15 +109,6 @@ def main():
                     cv_text = parse_cv(uploaded_file)
                     st.session_state.cv_text = cv_text
                     
-                    # Generate Questions (Optional display or priming)
-                    questions = generate_initial_questions(cv_text)
-                    if questions and any("Error" in q for q in questions): # Basic error check
-                         st.error("Error generating questions. Check API keys.")
-                    # else:
-                    #     st.write("### topics identified:")
-                    #     for q in questions:
-                    #         st.write(f"- {q}")
-                    
                     # Initialize Orchestrator
                     st.session_state.orchestrator.start_interview(
                         st.session_state.candidate_name, 
@@ -126,6 +117,18 @@ def main():
                     )
                     st.session_state.interview_active = True
                     st.success("Interview Started! Please introduce yourself.")
+        
+        # Reset Button (For Testing)
+        if st.session_state.interview_active:
+            st.markdown("---")
+            if st.button("🔄 Reset Interview", type="primary"):
+                # Clear critical session state
+                st.session_state.chat_history = []
+                st.session_state.interview_active = False
+                st.session_state.cv_text = ""
+                # Re-init orchestrator logic if needed, or just let next start handle it
+                # Effectively "Stop"
+                st.rerun()
 
     # Main Area
     if st.session_state.interview_active:
