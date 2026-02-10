@@ -1,6 +1,7 @@
 import streamlit as st
 # ExpertBridge AI Interviewer - v1.1
 import os
+import json # Added import
 from src.ingestion.cv_parser import parse_cv
 from src.ingestion.question_gen import generate_initial_questions
 from src.core.orchestrator import Orchestrator
@@ -50,16 +51,34 @@ def main():
         
         # 1. Job Selection
         st.subheader("1. Select Job Role")
-        job_files = []
-        if os.path.exists("output"):
-            job_files = [f for f in os.listdir("output") if f.endswith(".json")]
         
-        selected_job_file = st.selectbox("Choose a Job Description:", ["None"] + job_files)
+        # Robust Path Handling
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        output_dir = os.path.join(base_dir, "output")
+        
+        job_options = {} # Map "Title" -> "filename"
+        if os.path.exists(output_dir):
+            files = [f for f in os.listdir(output_dir) if f.endswith(".json")]
+            for f in files:
+                try:
+                    with open(os.path.join(output_dir, f), "r") as json_file:
+                        data = json.load(json_file)
+                        title = data.get("job_title", f)
+                        # Create unique key if needed, or just use title
+                        job_options[title] = f
+                except Exception:
+                    continue # Skip bad json
+        
+        if not job_options:
+            st.warning("No Job Descriptions found in 'output' folder.")
+            selected_job_title = "None"
+        else:
+            selected_job_title = st.selectbox("Choose a Job Description:", ["None"] + list(job_options.keys()))
         
         job_context = None
-        if selected_job_file and selected_job_file != "None":
-            import json
-            with open(os.path.join("output", selected_job_file), "r") as f:
+        if selected_job_title and selected_job_title != "None":
+            selected_filename = job_options[selected_job_title]
+            with open(os.path.join(output_dir, selected_filename), "r") as f:
                 job_context = json.load(f)
             st.success(f"Loaded Role: {job_context.get('job_title', 'Unknown Role')}")
             st.caption(f"Domain: {job_context.get('industry_domain', 'General')}")
@@ -100,7 +119,11 @@ def main():
                     #         st.write(f"- {q}")
                     
                     # Initialize Orchestrator
-                    st.session_state.orchestrator.start_interview(st.session_state.candidate_name, cv_text)
+                    st.session_state.orchestrator.start_interview(
+                        st.session_state.candidate_name, 
+                        cv_text, 
+                        st.session_state.get("current_job_context")
+                    )
                     st.session_state.interview_active = True
                     st.success("Interview Started! Please introduce yourself.")
 

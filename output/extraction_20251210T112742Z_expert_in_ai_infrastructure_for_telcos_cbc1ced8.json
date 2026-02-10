@@ -1,0 +1,105 @@
+{
+  "job_title": "Expert in AI Infrastructure for Telcos",
+  "seniority_level": "Senior",
+  "industry_domain": "Data Center and Colocation Providers",
+  "geography": {
+    "countries": [],
+    "regions": [],
+    "cities": [],
+    "notes": "Global"
+  },
+  "required_domain_expertise": [
+    "AI Infrastructure architectures",
+    "Interconnection ecosystems",
+    "Telco network evolution for AI workloads"
+  ],
+  "must_have_company_background": [
+    "Zayo",
+    "Equinix",
+    "NTT Global Data Centers",
+    "Lumen Technologies",
+    "BT",
+    "AT&T",
+    "Digital Realty"
+  ],
+  "required_technical_skills": [],
+  "required_soft_skills": [],
+  "required_languages": [],
+  "required_frameworks_tools": [],
+  "certifications": [],
+  "years_of_experience": "Not Specified (but prefer recently worked >1 years in listed companies)",
+  "years_in_domain": "Not Specified",
+  "salary_compensation": "Not Specified",
+  "company_size": "Not Specified",
+  "location": {
+    "remote": false,
+    "onsite": false,
+    "hybrid": false,
+    "cities": [],
+    "time_zone": "",
+    "time_zone_overlap_hours": null
+  },
+  "killer_requirements": [
+    "Recently worked in listed companies",
+    "Knowledge of evolving AI Infrastructure ecosystem"
+  ],
+  "must_not_have": [],
+  "nice_to_have": [],
+  "question_topics": [
+    "global_regional_trends_digital_infrastructure",
+    "emerging_ai_workloads_infrastructure_design",
+    "opportunities_distributed_edge_inferencing",
+    "network_capabilities_performance_characteristics",
+    "flexible_software_driven_networks",
+    "advances_data_center_network_technologies",
+    "understanding_classifying_enterprise_ai_needs",
+    "designing_network_compute_routes_for_ai",
+    "networking_technologies_adaptation",
+    "critical_considerations_ai_ready_network_infrastructure"
+  ],
+  "benefits_perks": [],
+  "confidence_score": 80,
+  "flags": [
+    "thin_brief_valid",
+    "inferred_seniority_safe",
+    "questions_converted_to_topics",
+    "specific_job_title"
+  ],
+  "raw_model_output_preview": "{\n  \"job_title\": \"Expert in AI Infrastructure for Telcos\",\n  \"seniority_level\": \"Senior\",\n  \"industry_domain\": \"Data Center and Colocation Providers\",\n  \"geography\": {\n    \"countries\": [],\n    \"regions\": [],\n    \"cities\": [],\n    \"notes\": \"Global\"\n  },\n  \"required_domain_expertise\": [\n    \"AI Infrastructure architectures\",\n    \"Interconnection ecosystems\",\n    \"Telco network evolution for AI workloads\"\n  ],\n  \"must_have_company_background\": [\n    \"Zayo\",\n    \"Equinix\",\n    \"NTT Global Data Centers\",\n    \"Lumen Technologies\",\n    \"BT\",\n    \"AT&T\",\n    \"Digital Realty\"\n  ],\n  \"required_technical_skills\": [],\n  \"required_soft_skills\": [],\n  \"required_languages\": [],\n  \"required_frameworks_tools\": [],\n  \"certifications\": [],\n  \"years_of_experience\": \"Not Specified (but prefer recently worked >1 years in listed companies)\",\n  \"years_in_domain\": \"Not Specified\",\n  \"salary_compensation\": \"Not Specified\",\n  \"company_size\": \"Not Specified\",\n  \"location\": {\n    \"remote\": false,\n    \"onsite\": false,\n    \"hybrid\": false,\n    \"cities\": [],\n    \"time_zone\": \"Not Specified\",\n    \"time_zone_overlap_hours\": null\n  },\n  \"killer_requirements\": [\n    \"Recently worked in listed companies\",\n    \"Knowledge of evolving AI Infrastructure ecosystem\"\n  ],\n  \"must_not_have\": [],\n  \"nice_to_have\": [],\n  \"question_topics\": [\n    \"global_regional_trends_digital_infrastructure\",\n    \"emerging_ai_workloads_infrastructure_design\",\n    \"opportunities_distributed_edge_inferencing\",\n    \"network_capabilities_performance_characteristics\",\n    \"flexible_software_driven_networks\",\n    \"advances_data_center_network_technologies\",\n    \"understanding_classifying_enterprise_ai_needs\",\n    \"designing_network_compute_routes_for_ai\",\n    \"networking_technologies_adaptation\",\n    \"critical_considerations_ai_ready_network_infrastructure\"\n  ],\n  \"benefits_perks\": [],\n  \"confidence_score\": 80,\n  \"flags\": [\n    \"thin_brief_valid\",\n    \"inferred_seniority_safe\",\n    \"questions_converted_to_topics\"\n  ]\n}",
+  "missing_fields": [
+    "required_technical_skills"
+  ],
+  "qa_note": {
+    "summary": "Extracted with 'thin but correct' philosophy - only explicit/inferred data",
+    "issues_found": [
+      "required_technical_skills"
+    ],
+    "normalization": [
+      "tech_skills_from_text",
+      "deterministic_geography",
+      "location",
+      "must_not_have",
+      "killer_requirements"
+    ],
+    "extraction_philosophy": "thin_but_correct"
+  },
+  "qc_status": "REVIEW",
+  "qc_traffic_light": "YELLOW",
+  "qc_reason": "Intermediate confidence or some flags; human review recommended.",
+  "years_of_experience_raw": "Not Specified (but prefer recently worked >1 years in listed companies)",
+  "years_of_experience_min": 1,
+  "_meta": {
+    "method": "azure_rest",
+    "azure_status": 200,
+    "elapsed": 12.810017585754395,
+    "retry_count": 0,
+    "attempt_details": [
+      {
+        "attempt": 1,
+        "qc_status": "REVIEW",
+        "azure_status": 200,
+        "elapsed": 12.810017585754395
+      }
+    ]
+  }
+}
