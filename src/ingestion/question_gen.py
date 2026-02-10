@@ -24,15 +24,32 @@ def generate_initial_questions(cv_text):
     try:
         prompt = f"Analyze the following CV and generate a list of 3-5 technical interview topics/questions. Return them as a simple listone per line.\nCV Text:\n{cv_text}"
         
-        completion = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": QUESTION_GEN_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            max_tokens=512,
-        )
+        messages = [
+            {"role": "system", "content": QUESTION_GEN_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+
+        try:
+             completion = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.5,
+                max_tokens=512,
+            )
+        except Exception as e:
+            error_str = str(e).lower()
+            if "audio" in error_str and ("modality" in error_str or "required" in error_str):
+                print(f"[QuestionGen] Metadata-Only Model detected. Retrying with dummy audio output...")
+                completion = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.5,
+                    max_tokens=512,
+                    modalities=["text", "audio"],
+                    audio={"voice": "alloy", "format": "wav"}
+                )
+            else:
+                raise e
         
         response_text = completion.choices[0].message.content
         

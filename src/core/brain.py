@@ -20,6 +20,39 @@ class InterviewBrain:
             
         self.model_name = self.deployment_name
         self.history = []
+    
+    def _safe_completion(self, messages, temperature=0.7, max_tokens=1024):
+        """
+        Attempts a standard completion. If it fails due to audio modality requirements,
+        retries with audio output requested (discarding the audio).
+        """
+        try:
+             # Try standard text-only request first
+             return self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=1,
+                stream=False
+            )
+        except Exception as e:
+            error_str = str(e).lower()
+            # Check for the specific Azure error about audio modality
+            if "audio" in error_str and ("modality" in error_str or "required" in error_str):
+                print(f"[Brain] Metadata-Only Model detected. Retrying with dummy audio output...")
+                return self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    modalities=["text", "audio"],
+                    audio={"voice": "alloy", "format": "wav"},
+                    top_p=1,
+                    stream=False
+                )
+            else:
+                raise e # Re-raise real errors
 
     def evaluate_code(self, code_snippet):
         """
@@ -42,8 +75,7 @@ class InterviewBrain:
         """
         
         try:
-             completion = self.client.chat.completions.create(
-                model=self.model_name,
+             completion = self._safe_completion(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2
             )
@@ -73,14 +105,10 @@ class InterviewBrain:
         self.history.append({"role": "user", "content": initial_message})
         
         try:
-            completion = self.client.chat.completions.create(
-                model=self.model_name,
+            completion = self._safe_completion(
                 messages=self.history,
                 temperature=0.7,
-                max_tokens=1024,
-                top_p=1,
-                stream=False,
-                stop=None,
+                max_tokens=1024
             )
             
             response_text = completion.choices[0].message.content
@@ -104,14 +132,10 @@ class InterviewBrain:
             # Add user message
             self.history.append({"role": "user", "content": user_text})
             
-            completion = self.client.chat.completions.create(
-                model=self.model_name,
+            completion = self._safe_completion(
                 messages=self.history,
                 temperature=0.7,
-                max_tokens=1024,
-                top_p=1,
-                stream=False,
-                stop=None,
+                max_tokens=1024
             )
             
             ai_text = completion.choices[0].message.content
