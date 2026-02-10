@@ -94,7 +94,7 @@ class InterviewBrain:
         except Exception as e:
             return f"Error evaluating code: {e}"
 
-    def set_context(self, candidate_name, cv_text):
+    def set_context(self, candidate_name, cv_text, job_context=None):
         """
         Initializes the chat history with system prompt and context.
         Returns the initial greeting from the AI.
@@ -102,15 +102,37 @@ class InterviewBrain:
         if not self.client:
             return "Error: Azure OpenAI API Key not configured."
             
-        # Refined System Prompt for Phases
-        phase_prompt = INTERVIEWER_SYSTEM_PROMPT + "\n\nWe are starting the THEORY phase. Ask 5 distinct technical questions, one by one."
+        # Dynamic System Prompt Construction
+        if job_context:
+            role_title = job_context.get('job_title', 'Expert')
+            domain = job_context.get('industry_domain', 'General')
+            requirements = job_context.get('killer_requirements', [])
+            topics = job_context.get('question_topics', [])
+            
+            system_instruction = f"""
+            You are an expert interviewer for the role of {role_title} in the {domain} domain.
+            Your goal is to assess the candidate's fit based on the Job Description provided below.
+            
+            JOB REQUIREMENTS:
+            - Focus Topics: {', '.join(topics)}
+            - Key Requirements: {', '.join(requirements)}
+            
+            INTERVIEW STRATEGY:
+            1. Validate their experience against the Key Requirements.
+            2. Ask deep technical questions related to the Focus Topics.
+            3. Be professional but probing. Verify their claims.
+            4. Do not offer coding challenges. Stick to domain knowledge and situational judgment.
+            """
+        else:
+            # Fallback to generic prompt if no job selected
+            system_instruction = INTERVIEWER_SYSTEM_PROMPT + "\n\nWe are starting the interview. Ask distinct technical questions relevant to their CV."
 
         # Reset history
         self.history = [
-            {"role": "system", "content": phase_prompt}
+            {"role": "system", "content": system_instruction}
         ]
         
-        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself and asking the first question."
+        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question."
         
         # Add the context as a user message to trigger the start
         self.history.append({"role": "user", "content": initial_message})

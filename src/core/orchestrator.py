@@ -9,72 +9,40 @@ class Orchestrator:
         self.speaker = Speaker()
         
         # Interview State
-        self.phase = "THEORY" # THEORY, CODING, CONCLUSION
-        self.theory_question_count = 0
-        self.coding_question_count = 0
-        self.max_theory = 5
-        self.max_coding = 2
+        self.phase = "INTERVIEW" 
+        self.question_count = 0
+        self.max_questions = 7 # Increased for depth
 
-    def start_interview(self, candidate_name, cv_text):
-        self.brain.set_context(candidate_name, cv_text)
+    def start_interview(self, candidate_name, cv_text, job_context=None):
+        """
+        Initializes the interview with optional Job Context.
+        """
+        self.brain.set_context(candidate_name, cv_text, job_context)
 
-    def run_interview_turn(self, audio_input, mime_type="audio/wav"):
+    def run_interview_turn(self, audio_input, mime_type="audio/wav", settings=None):
         """
         Runs one turn of the interview: Audio -> Text -> Brain -> Audio.
-        Handles phase transitions automatically.
+        Accepts settings dict for customization.
         """
-        if self.phase == "CONCLUSION":
-            return None, "The interview is over. Thank you!", None, False
+        if not settings:
+            settings = {}
 
         # 1. Listener: Transcribe audio
-        user_text = self.listener.get_transcription(audio_input, mime_type)
+        # Pass language if needed (future expansion)
+        user_text = self.listener.get_transcription(audio_input, mime_type) # could add language here
+        
         if not user_text:
             return None, "I didn't hear anything.", None, False
 
         # 2. Brain: Generate response
-        # Force phase shift if needed
-        if self.phase == "THEORY":
-            self.theory_question_count += 1
-            if self.theory_question_count >= self.max_theory:
-                self.phase = "CODING"
-                # Inject a system message to force the AI to switch topics
-                self.brain.history.append({"role": "system", "content": "THEORY Phase complete. Switch to CODING phase now. Ask the first coding question. Do not ask more theory."})
-
-        ai_text = self.brain.generate_response(user_text)
-
-        # Check for Coding Mode trigger logic
-        coding_mode = False
-        if self.phase == "CODING" or "[CODING]" in ai_text:
-             coding_mode = True
-             if "[CODING]" in ai_text:
-                 ai_text = ai_text.replace("[CODING]", "").strip()
+        try:
+             ai_text = self.brain.generate_response(user_text)
+        except Exception as e:
+             ai_text = "I am having trouble thinking clearly. Let's move on."
+             print(f"Brain Error: {e}")
 
         # 3. Speaker: Convert response to audio
-        ai_audio = self.speaker.text_to_speech(ai_text)
+        voice_model = settings.get("voice_model", "aura-asteria-en")
+        ai_audio = self.speaker.text_to_speech(ai_text, voice_model=voice_model)
         
-        return user_text, ai_text, ai_audio, coding_mode
-
-    def submit_code(self, code_snippet):
-        """
-        Evaluates submitted code and progresses the interview.
-        """
-        evaluation = self.brain.evaluate_code(code_snippet)
-        self.coding_question_count += 1
-        
-        # Inject instruction for next turn
-        if self.coding_question_count < self.max_coding:
-             self.brain.history.append({"role": "system", "content": "Code submitted. Feedback given. Ask the SECOND coding question now."})
-        else:
-             self.brain.history.append({"role": "system", "content": "Code submitted. Interview complete. Wrap up and thank the candidate."})
-             self.phase = "CONCLUSION"
-             
-        return evaluation
-
-    def check_coding_status(self):
-        """
-        Returns True if we should ask another coding question, False if we should move to conclusion.
-        """
-        if self.coding_question_count >= self.max_coding:
-            self.phase = "CONCLUSION"
-            return False
-        return True
+        return user_text, ai_text, ai_audio, False # Never triggers coding mode

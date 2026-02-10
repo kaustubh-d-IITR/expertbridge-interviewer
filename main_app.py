@@ -16,13 +16,20 @@ except ImportError:
 if not os.getenv("AZURE_OPENAI_API_KEY") and not os.getenv("DEEPGRAM_API_KEY"):
      st.warning("⚠️ API Keys missing. Please configure them in your .env file or Streamlit Secrets.")
 
-# Page Config
-st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🎤")
+# Page Config (This will be moved inside main() as per instruction)
+# st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🎤")
 
 def main():
-    st.title("ExpertBridge AI Interviewer 🤖")
+    # Page Config
+    st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
 
-    # Initialize Session State
+    # --- Session State ---
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "interview_active" not in st.session_state:
+        st.session_state.interview_active = False
+    if "current_phase" not in st.session_state:
+        st.session_state.current_phase = "setup"
     if "orchestrator" not in st.session_state:
         try:
             st.session_state.orchestrator = Orchestrator()
@@ -30,10 +37,6 @@ def main():
             st.error(f"⚠️ Configuration Missing: {e}")
             st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys:\n```\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\nDEEPGRAM_API_KEY = \"...\"\n```")
             st.stop()
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "interview_active" not in st.session_state:
-        st.session_state.interview_active = False
     if "cv_text" not in st.session_state:
         st.session_state.cv_text = ""
     if "candidate_name" not in st.session_state:
@@ -41,8 +44,42 @@ def main():
     if "coding_mode" not in st.session_state:
         st.session_state.coding_mode = False
     
-    # Sidebar: CV Upload
+    # --- Sidebar Settings ---
     with st.sidebar:
+        st.title("⚙️ Interview Settings")
+        
+        # 1. Job Selection
+        st.subheader("1. Select Job Role")
+        job_files = []
+        if os.path.exists("output"):
+            job_files = [f for f in os.listdir("output") if f.endswith(".json")]
+        
+        selected_job_file = st.selectbox("Choose a Job Description:", ["None"] + job_files)
+        
+        job_context = None
+        if selected_job_file and selected_job_file != "None":
+            import json
+            with open(os.path.join("output", selected_job_file), "r") as f:
+                job_context = json.load(f)
+            st.success(f"Loaded Role: {job_context.get('job_title', 'Unknown Role')}")
+            st.caption(f"Domain: {job_context.get('industry_domain', 'General')}")
+            st.session_state.current_job_context = job_context
+        else:
+            st.session_state.current_job_context = None
+
+        # 2. Language & Voice
+        st.subheader("2. Audio Settings")
+        language = st.selectbox("Interview Language", ["English", "Hindi", "French", "Spanish"], index=0)
+        voice_gender = st.radio("Interviewer Voice", ["Female (Asteria)", "Male (Orion)"], index=0)
+        
+        # Store settings in session state for other modules to access
+        st.session_state.voice_model = "aura-asteria-en" if "Female" in voice_gender else "aura-orion-en"
+        st.session_state.language = language
+
+        st.markdown("---")
+        st.info("💡 **Phase 2 Update:**\nCoding challenges disabled.\nFocus on Domain Expertise.")
+
+        # Sidebar: CV Upload (Original content, moved after new settings)
         st.header("Upload Resume")
         uploaded_file = st.file_uploader("Upload PDF CV", type=["pdf"])
         
@@ -70,83 +107,44 @@ def main():
     # Main Area
     if st.session_state.interview_active:
         
-        # Tabs for Voice and Coding
-        tab1, tab2 = st.tabs(["🎤 Voice Interview", "💻 Coding Challenge"])
-        
-        with tab1:
-            # Display Chat History
-            for sender, message, _ in st.session_state.chat_history:
-                with st.chat_message(sender):
-                    st.write(message)
+        # Display Chat History
+        for sender, message, _ in st.session_state.chat_history:
+             with st.chat_message(sender):
+                 st.write(message)
 
-            # Audio Input
-            audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
-            try:
-                audio_value = st.audio_input("Record your answer", key=audio_key)
-            except AttributeError:
-                 st.warning("st.audio_input not supported. Use text input for debug?")
-                 audio_value = None
+        # Audio Input
+        audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
+        audio_value = st.audio_input("Record your answer", key=audio_key)
 
-            # Debug: Check audio input properties
-            if audio_value:
-                 st.write(f"Audio Input Type: {type(audio_value)}")
-                 st.write(f"Audio Input Size: {audio_value.getbuffer().nbytes} bytes")
+        if audio_value:
+             with st.spinner("Listening..."):
+                 mime_type = audio_value.type
+                 
+                 settings = {
+                    "language": st.session_state.get("language", "English"),
+                    "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
+                    "job_context": st.session_state.get("current_job_context", None)
+                 }
 
-            if audio_value:
-                 # Process the audio input
-                 with st.spinner("Listening..."):
-                     # Pass the mimetype as well for better Deepgram handling
-                     mime_type = audio_value.type
-                     st.write(f"Detected MIME Type: {mime_type}") # Debug
-                     
-                     user_text, ai_text, ai_audio, coding_triggered = st.session_state.orchestrator.run_interview_turn(audio_value, mime_type)
-                     
-                     if coding_triggered:
-                         st.session_state.coding_mode = True
-                         st.toast("Coding Challenge Unlocked! Check the Coding Tab.", icon="💻")
-                     
-                     if user_text:
-                         # Add to history
-                         st.session_state.chat_history.append(("user", user_text, None))
-                         st.session_state.chat_history.append(("assistant", ai_text, ai_audio))
-                         
-                         # Increment key to reset audio widget
-                         st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
-                         
-                         # Rerun to display new messages
-                         st.rerun()
-                     else:
-                         st.warning("I couldn't hear that. Please try speaking again/louder or check your microphone.")
+                 user_text, ai_text, ai_audio, _ = st.session_state.orchestrator.run_interview_turn(
+                     audio_value, 
+                     mime_type,
+                     settings=settings
+                 )
+                 
+                 if user_text:
+                     st.session_state.chat_history.append(("user", user_text, None))
+                     st.session_state.chat_history.append(("assistant", ai_text, ai_audio))
+                     st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
+                     st.rerun()
+                 else:
+                     st.warning("I couldn't hear that. Please try speaking again/louder.")
 
-            # Autoplay latest AI audio
-            if st.session_state.chat_history:
-                last_sender, _, last_audio = st.session_state.chat_history[-1]
-                if last_sender == "assistant" and last_audio:
-                    st.audio(last_audio, format="audio/mp3", autoplay=True)
-        
-        with tab2:
-            st.header("Coding Challenge")
-            if st.session_state.coding_mode:
-                st.info("The interviewer has asked you to solve a coding problem.")
-                code = st.text_area("Write your code here (Python):", height=300)
-                if st.button("Submit Code"):
-                    # Call Orchestrator to evaluate
-                    with st.spinner("Evaluating Code..."):
-                        evaluation = st.session_state.orchestrator.submit_code(code)
-                    
-                    st.success("Code Evaluation Complete!")
-                    st.write(evaluation)
-                    
-                    # Check if we should continue coding or finish
-                    if not st.session_state.orchestrator.check_coding_status():
-                        st.session_state.coding_mode = False
-                        st.balloons()
-                        st.success("Interview Completed! Thank you.")
-                    else:
-                        st.info("Please wait for the next coding question via voice or switch back to the Voice Tab.")
-            else:
-                st.write("No active coding challenge yet. Continue the voice interview.")
-
+        # Autoplay
+        if st.session_state.chat_history:
+            last_sender, _, last_audio = st.session_state.chat_history[-1]
+            if last_sender == "assistant" and last_audio:
+                st.audio(last_audio, format="audio/mp3", autoplay=True)
     else:
         st.info("Please upload a CV and click 'Start Interview' to begin.")
 

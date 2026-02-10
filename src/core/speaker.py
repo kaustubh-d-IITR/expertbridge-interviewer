@@ -8,7 +8,7 @@ class Speaker:
             raise ValueError("DEEPGRAM_API_KEY not found in environment variables")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
-    def text_to_speech(self, text, output_file="output_tts.mp3"):
+    def text_to_speech(self, text, output_file="output_tts.mp3", voice_model="aura-asteria-en"):
         """
         Converts text to speech using Deepgram Aura.
         Returns the path to the audio file.
@@ -20,7 +20,7 @@ class Speaker:
             filename = output_file
             response = self.deepgram.speak.v1.audio.generate(
                 text=text, 
-                model="aura-asteria-en"
+                model=voice_model
             )
             
             # Write the streaming response to file
