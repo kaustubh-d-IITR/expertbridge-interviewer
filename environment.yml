@@ -1,0 +1,13 @@
+name: expertbridge-interviewer
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - streamlit
+    - openai
+    - deepgram-sdk
+    - python-dotenv
+    - pypdf
+    - watchdog
