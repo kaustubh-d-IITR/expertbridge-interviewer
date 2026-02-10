@@ -54,6 +54,17 @@ class InterviewBrain:
             else:
                 raise e # Re-raise real errors
 
+    def _extract_content(self, completion):
+        """
+        Helper to extract text from either content or audio.transcript
+        """
+        msg = completion.choices[0].message
+        if msg.content:
+            return msg.content
+        if hasattr(msg, 'audio') and msg.audio and msg.audio.transcript:
+            return msg.audio.transcript
+        return "I am having trouble speaking right now."
+
     def evaluate_code(self, code_snippet):
         """
         Evaluates the provided code snippet.
@@ -79,7 +90,7 @@ class InterviewBrain:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2
             )
-             return completion.choices[0].message.content
+             return self._extract_content(completion)
         except Exception as e:
             return f"Error evaluating code: {e}"
 
@@ -111,7 +122,7 @@ class InterviewBrain:
                 max_tokens=1024
             )
             
-            response_text = completion.choices[0].message.content
+            response_text = self._extract_content(completion)
             self.history.append({"role": "assistant", "content": response_text})
             return response_text
             
@@ -138,7 +149,7 @@ class InterviewBrain:
                 max_tokens=1024
             )
             
-            ai_text = completion.choices[0].message.content
+            ai_text = self._extract_content(completion)
             
             # Add assistant response
             self.history.append({"role": "assistant", "content": ai_text})

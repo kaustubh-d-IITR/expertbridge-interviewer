@@ -52,6 +52,12 @@ def generate_initial_questions(cv_text):
                 raise e
         
         response_text = completion.choices[0].message.content
+        # Fallback for audio models
+        if not response_text and hasattr(completion.choices[0].message, 'audio'):
+             response_text = completion.choices[0].message.audio.transcript
+
+        if not response_text:
+             response_text = "Could not generate questions. Please introduce yourself."
         
         # Simple extraction assumes the model follows instructions to list items
         questions = [line.strip().lstrip('- ').strip() for line in response_text.split('\n') if line.strip()]
