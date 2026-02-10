@@ -117,11 +117,16 @@ class InterviewBrain:
             - Focus Topics: {', '.join(topics)}
             - Key Requirements: {', '.join(requirements)}
             
-            INTERVIEW STRATEGY:
-            1. Validate their experience against the Key Requirements.
-            2. Ask deep technical questions related to the Focus Topics.
-            3. Be professional but probing. Verify their claims.
-            4. Do not offer coding challenges. Stick to domain knowledge and situational judgment.
+            INTERVIEW STRATEGY (Total 6 Questions):
+            1.  **Questions 1 & 2 (Job Fit)**: Ask questions strictly about the Role Objectives and Challenges. Verify if they understand the job's core mission.
+            2.  **Questions 3 & 4 (Skill Fit)**: Ask technical questions strictly based on the skills found in their CV. Verify their claimed expertise.
+            3.  **Questions 5 & 6 (Synergy)**: Ask questions about how their specific skills (CV) can solve the specific problems (Job Description). Test their strategic thinking.
+            
+            Process:
+            - Ask ONE question at a time.
+            - Keep responses concise and conversational.
+            - Do not explicitly state "Question 1" or "Question 2". Just ask naturally.
+            - After Question 6, conclude the interview.
             """
         else:
             # Fallback to generic prompt if no job selected
@@ -132,7 +137,7 @@ class InterviewBrain:
             {"role": "system", "content": system_instruction}
         ]
         
-        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question."
+        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question (Phase 1: Job Fit)."
         
         # Add the context as a user message to trigger the start
         self.history.append({"role": "user", "content": initial_message})
