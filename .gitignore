@@ -1,0 +1,26 @@
+# Environment variables
+.env
+
+# Python compilation
+__pycache__/
+*.py[cod]
+
+# Streamlit
+.streamlit/
+
+# Temporary Audio/Debug Files
+*.wav
+*.mp3
+debug_audio*
+output_*.mp3
+verify_*.py
+*_verify_*.py
+
+# Logs and Text dumps
+*.txt
+models.txt
+models_out.txt
+groq_verify_output.txt
+
+# Config
+config.yaml

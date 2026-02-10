@@ -1,0 +1,129 @@
+import os
+from openai import AzureOpenAI
+from src.utils.prompts import INTERVIEWER_SYSTEM_PROMPT
+
+class InterviewBrain:
+    def __init__(self):
+        self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-audio-AI-Assessment")
+        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+
+        if not self.api_key or not self.endpoint:
+            raise ValueError("AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT not found in env")
+        
+        self.client = AzureOpenAI(
+            api_key=self.api_key,
+            api_version=self.api_version,
+            azure_endpoint=self.endpoint
+        )
+            
+        self.model_name = self.deployment_name
+        self.history = []
+
+    def evaluate_code(self, code_snippet):
+        """
+        Evaluates the provided code snippet.
+        """
+        if not self.client:
+             return "Error: Brain not active."
+             
+        prompt = f"""
+        Evaluate the following Python code solution.
+        Check for: 
+        1. Correctness (Does it match the problem likely asked?)
+        2. Efficiency (Big O)
+        3. Code Style (Pythonic)
+        
+        Provide a concise feedback summary (2-3 sentences) and a Pass/Fail rating.
+        
+        CODE:
+        {code_snippet}
+        """
+        
+        try:
+             completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2
+            )
+             return completion.choices[0].message.content
+        except Exception as e:
+            return f"Error evaluating code: {e}"
+
+    def set_context(self, candidate_name, cv_text):
+        """
+        Initializes the chat history with system prompt and context.
+        Returns the initial greeting from the AI.
+        """
+        if not self.client:
+            return "Error: Azure OpenAI API Key not configured."
+            
+        # Refined System Prompt for Phases
+        phase_prompt = INTERVIEWER_SYSTEM_PROMPT + "\n\nWe are starting the THEORY phase. Ask 5 distinct technical questions, one by one."
+
+        # Reset history
+        self.history = [
+            {"role": "system", "content": phase_prompt}
+        ]
+        
+        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself and asking the first question."
+        
+        # Add the context as a user message to trigger the start
+        self.history.append({"role": "user", "content": initial_message})
+        
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=self.history,
+                temperature=0.7,
+                max_tokens=1024,
+                top_p=1,
+                stream=False,
+                stop=None,
+            )
+            
+            response_text = completion.choices[0].message.content
+            self.history.append({"role": "assistant", "content": response_text})
+            return response_text
+            
+        except Exception as e:
+            print(f"!!! AZURE BRAIN CONTEXT ERROR !!!: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return "Hello! I am ready to interview you. Could you please introduce yourself?"
+
+    def generate_response(self, user_text):
+        """
+        Generates a response to the user's input.
+        """
+        try:
+            if not self.client:
+                return "Brain not initialized. Please upload a CV first."
+            
+            # Add user message
+            self.history.append({"role": "user", "content": user_text})
+            
+            completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=self.history,
+                temperature=0.7,
+                max_tokens=1024,
+                top_p=1,
+                stream=False,
+                stop=None,
+            )
+            
+            ai_text = completion.choices[0].message.content
+            
+            # Add assistant response
+            self.history.append({"role": "assistant", "content": ai_text})
+            
+            return ai_text
+            
+        except Exception as e:
+            # Crucial: print the exact error so it shows up in Streamlit Cloud logs
+            print(f"!!! AZURE BRAIN ERROR !!!: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return "I'm having trouble thinking right now. Could you repeat that?"
