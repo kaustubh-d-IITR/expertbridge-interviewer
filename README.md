@@ -43,7 +43,7 @@ The system mimics a human interviewer's brain using three core "organs":
 ## 🚀 Deployment Instructions
 
 ### 1. GitHub Setup
-Push **only** the files listed above. The `.gitignore` file included in this repo will automatically prevent you from pushing unnecessary files like `__pycache__`, `*.wav`, or your secret `.env` file.
+Push **only** the files listed above. The `.gitignore` file included in this repo will automatically prevent you from pushing unnecessary files like `__pycache__`, `*.wav`, or your secret `.env` file. Ensure `packages.txt` is also pushed if you added system dependencies (it can be empty).
 
 ### 2. Streamlit Cloud Deployment
 1.  Push this repository to GitHub.
