@@ -31,9 +31,9 @@ def main():
         st.session_state.interview_active = False
     if "current_phase" not in st.session_state:
         st.session_state.current_phase = "setup"
-    if "orchestrator" not in st.session_state:
+    if "orchestrator_v3" not in st.session_state:
         try:
-            st.session_state.orchestrator = Orchestrator()
+            st.session_state.orchestrator_v3 = Orchestrator()
         except ValueError as e:
             st.error(f"⚠️ Configuration Missing: {e}")
             st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys:\n```\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\nDEEPGRAM_API_KEY = \"...\"\n```")
@@ -115,7 +115,7 @@ def main():
                     st.session_state.cv_text = cv_text
                     
                     # Initialize Orchestrator
-                    st.session_state.orchestrator.start_interview(
+                    st.session_state.orchestrator_v3.start_interview(
                         st.session_state.candidate_name, 
                         cv_text, 
                         st.session_state.get("current_job_context"),
@@ -132,8 +132,8 @@ def main():
                 st.session_state.chat_history = []
                 st.session_state.interview_active = False
                 st.session_state.cv_text = ""
-                # Re-init orchestrator logic if needed, or just let next start handle it
-                # Effectively "Stop"
+                # Re-init orchestrator logic if needed
+                st.session_state.orchestrator_v3 = Orchestrator()
                 st.rerun()
 
     # Main Area
@@ -158,7 +158,7 @@ def main():
                     "job_context": st.session_state.get("current_job_context", None)
                  }
 
-                 user_text, ai_text, ai_audio, _ = st.session_state.orchestrator.run_interview_turn(
+                 user_text, ai_text, ai_audio, _ = st.session_state.orchestrator_v3.run_interview_turn(
                      audio_value, 
                      mime_type,
                      settings=settings
