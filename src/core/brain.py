@@ -192,16 +192,22 @@ class InterviewBrain:
             if not self.client:
                 return {"text": "Brain not initialized. Please upload a CV first.", "score": 0}
             
-            # Feature 4: Strict Output Language Logic
+            # Feature 4 & 5: Strict Output Language Logic
             # If response_language is explicitly set (from UI), it overrides detected_language for the output.
             target_lang = response_language if response_language else detected_language
             
             lang_instruction = ""
-            if target_lang and target_lang != "en" and target_lang != "English":
-                 # Strict instruction for specific language
-                 lang_instruction = f"[SYSTEM INSTRUCTION: You MUST reply in {target_lang}. Use the native script for {target_lang} (e.g., Devanagari for Hindi). Do NOT use English script for Hindi terms.]\n\n"
-            elif detected_language and detected_language != "en":
-                 # Fallback to auto-detect behavior if no strict response language set
+            
+            # Case A: Explicit Target Language (Non-English)
+            if target_lang and target_lang.lower() not in ["en", "english"]:
+                 lang_instruction = f"[SYSTEM INSTRUCTION: You MUST reply in {target_lang}. Use the native script for {target_lang}.]\n\n"
+            
+            # Case B: Strict English Enforcement (User speaks non-English, but Target is English)
+            elif (target_lang and target_lang.lower() in ["en", "english"]) and (detected_language and detected_language.lower() not in ["en", "english"]):
+                 lang_instruction = f"[SYSTEM INSTRUCTION: The user is speaking in language code '{detected_language}'. UNDERSTAND it, but you MUST reply in ENGLISH only.]\n\n"
+
+            # Case C: Auto-Detect (No strict target set) -> Reply in same language
+            elif not response_language and detected_language and detected_language != "en":
                  lang_instruction = f"[SYSTEM NOTE: The user is speaking in language code '{detected_language}'. Reply in this language.]\n\n"
             
             # Add user message with hidden instruction
@@ -220,6 +226,7 @@ class InterviewBrain:
             self.history.append({"role": "assistant", "content": ai_text})
             
             # Feature 6: Signal Quality Score (Heuristic)
+            # ... (rest unchanged)
             # 1. Answer Length (Longer is generally better for depth, up to a point)
             word_count = len(user_text.split())
             length_score = min(100, (word_count / 50) * 100) # 50 words = 100%

@@ -86,29 +86,18 @@ def main():
         else:
             st.session_state.current_job_context = None
 
-        # 2. Language & Voice
-        st.subheader("2. Audio Settings")
+        # 2. Voice (Gender only)
+        st.subheader("2. Interviewer Voice")
+        voice_gender = st.radio("Select Voice", ["Female (Asteria)", "Male (Orion)"], index=0)
         
-        col1, col2 = st.columns(2)
-        with col1:
-             input_language = st.selectbox("Input Language (You)", ["English", "Hindi", "French", "Spanish"], index=0, help="Language you will speak.")
-        with col2:
-             response_language = st.selectbox("Response Language (AI)", ["English", "Hindi", "French", "Spanish"], index=0, help="Language AI will speak and write.")
-        
-        voice_gender = st.radio("Interviewer Voice", ["Female (Asteria)", "Male (Orion)"], index=0)
-        
-        # Store settings in session state for other modules to access
+        # Hardcoded Settings for Phase 5 (Strict English + Recruiter Mode)
         st.session_state.voice_model = "aura-asteria-en" if "Female" in voice_gender else "aura-orion-en"
-        st.session_state.input_language = input_language
-        st.session_state.response_language = response_language
+        st.session_state.input_language = "Auto" # Auto-detect but ignored for output
+        st.session_state.response_language = "English" # Strict Enforce
+        st.session_state.mode = "recruiter" # Mandatory Recruiter Mode
 
         st.markdown("---")
-        # Feature 4: Recruiter Mode Toggle
-        recruiter_mode = st.checkbox("🔥 Recruiter Mode (10-min, Aggressive)", value=False)
-        mode = "recruiter" if recruiter_mode else "standard"
-        st.session_state.mode = mode
-
-        st.info("💡 **Phase 3 Upgrade:**\n- Auto-Language Detect\n- Adaptive Brain\n- Recruiter Persona")
+        st.info("💡 **System Upgrade:**\n- Strict English Output\n- Auto-Detect Input\n- Mandatory Recruiter Mode")
 
         # Sidebar: CV Upload (Original content, moved after new settings)
         st.header("Upload Resume")
@@ -121,12 +110,12 @@ def main():
                     cv_text = parse_cv(uploaded_file)
                     st.session_state.cv_text = cv_text
                     
-                    # Initialize Orchestrator
+                    # Initialize Orchestrator (v3 reused)
                     st.session_state.orchestrator_v3.start_interview(
                         st.session_state.candidate_name, 
                         cv_text, 
                         st.session_state.get("current_job_context"),
-                        mode=st.session_state.mode # Pass mode here
+                        mode=st.session_state.mode
                     )
                     st.session_state.interview_active = True
                     st.success("Interview Started! Please introduce yourself.")
@@ -139,7 +128,7 @@ def main():
                 st.session_state.chat_history = []
                 st.session_state.interview_active = False
                 st.session_state.cv_text = ""
-                # Re-init orchestrator logic if needed
+                # Re-init orchestrator logic
                 st.session_state.orchestrator_v3 = Orchestrator()
                 st.rerun()
 
