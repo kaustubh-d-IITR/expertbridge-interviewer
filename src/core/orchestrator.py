@@ -12,13 +12,17 @@ class Orchestrator:
         self.phase = "INTERVIEW" 
         self.question_count = 0
         self.max_questions = 7 
-        self.final_warning_given = False # Feature 7: Track if 13m warning sent
+        self.final_warning_given = False 
+        self.scores = [] # Feature 8: Track scores
+        self.final_score = 0
 
     def start_interview(self, candidate_name, cv_text, job_context=None, mode="standard"):
         """
         Initializes the interview with optional Job Context.
         """
-        self.final_warning_given = False # Reset on start
+        self.final_warning_given = False 
+        self.scores = []
+        self.final_score = 0
         self.brain.set_context(candidate_name, cv_text, job_context, mode=mode)
 
     def run_interview_turn(self, audio_input, mime_type="audio/wav", settings=None):
@@ -35,11 +39,17 @@ class Orchestrator:
         # A. Hard Stop (15 Minutes = 900s). Buffer at 890s.
         if elapsed_time > 890:
              self.phase = "TERMINATED"
-             return None, "Time is up. The interview is now over. Thank you.", None, False
+             # Calculate Average Score
+             if self.scores:
+                 self.final_score = int(sum(self.scores) / len(self.scores))
+             else:
+                 self.final_score = 0
+             return None, f"Time is up. The interview is now over. Your Final Score: {self.final_score}/100. Thank you.", None, False
 
         # 1. Listener: Transcribe audio
         transcription_result = self.listener.get_transcription(audio_input, mime_type)
         
+        # ... (Listener logic unchanged) ...
         # Handle new dict format (Feature 1) or legacy string
         if isinstance(transcription_result, dict):
             user_text = transcription_result.get("text", "")
@@ -55,7 +65,6 @@ class Orchestrator:
             return None, "I didn't hear anything.", None, False
 
         # Feature 7B: 13 Minute Warning (780s)
-        # Inject "Final Question" prompt if not done yet
         if elapsed_time > 780 and not self.final_warning_given:
             print("[Orchestrator] 13 Minute Mark - Injecting Final Question Prompt")
             user_text = "[SYSTEM ALERT: Time is almost up (13 mins passed). You must ask ONE FINAL short question and then wrap up. Do NOT ask multiple questions.]\n\n" + user_text
@@ -78,10 +87,15 @@ class Orchestrator:
                  signal_score = brain_response.get("score", 0)
                  terminate = brain_response.get("terminate", False)
                  
+                 # Store Score
+                 if signal_score > 0:
+                     self.scores.append(signal_score)
+                 
                  print(f"[Orchestrator] Signal Quality Score: {signal_score}/100")
                  
                  if terminate:
                      self.phase = "TERMINATED"
+                     self.final_score = 0 # Conduct violation = 0
                      print("[Orchestrator] INTERVIEW TERMINATED BY AI.")
              else:
                  ai_text = brain_response

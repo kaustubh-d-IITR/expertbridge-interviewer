@@ -148,7 +148,16 @@ def main():
 
         # Feature 6: Termination Check
         if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
-             st.error("🚨 INTERVIEW TERMINATED (Conduct/Time).")
+             final_score = getattr(st.session_state.orchestrator_v3, "final_score", 0)
+             
+             st.error(f"🚨 INTERVIEW TERMINATED. Final Score: {final_score}/100")
+             
+             if final_score > 0:
+                st.balloons()
+                st.success(f"🏆 Your Performance Score: {final_score}/100")
+             else:
+                st.error("Termination Reason: Conduct Violation or Time Exceeded with no answers.")
+                
              st.warning("Please reset the interview to try again (if allowed).")
              st.stop()
 
