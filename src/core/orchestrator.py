@@ -55,12 +55,17 @@ class Orchestrator:
                  response_language=response_lang
              )
              
-             # Feature 6: Handle Signal Score (Hidden)
+             # Feature 6: Handle Signal Score (Hidden) & Termination
              if isinstance(brain_response, dict):
                  ai_text = brain_response.get("text", "")
                  signal_score = brain_response.get("score", 0)
+                 terminate = brain_response.get("terminate", False)
+                 
                  print(f"[Orchestrator] Signal Quality Score: {signal_score}/100")
-                 # We could store this in self.scores list if we wanted to track it over time
+                 
+                 if terminate:
+                     self.phase = "TERMINATED"
+                     print("[Orchestrator] INTERVIEW TERMINATED BY AI.")
              else:
                  ai_text = brain_response
                  

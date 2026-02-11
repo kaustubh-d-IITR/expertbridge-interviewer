@@ -20,6 +20,8 @@ class InterviewBrain:
             
         self.model_name = self.deployment_name
         self.history = []
+        self.warning_count = 0 # Feature 6: Conduct Tracking`,StartLine:21,TargetContent:`        self.model_name = self.deployment_name
+        self.history = []
     
     def _safe_completion(self, messages, temperature=0.7, max_tokens=1024):
         """
@@ -186,14 +188,13 @@ class InterviewBrain:
     def generate_response(self, user_text, detected_language="en", response_language=None):
         """
         Generates a response to the user's input.
-        Adaptive Language: Injects instructions to reply in the user's language.
+        Parses JSON output for Smart Brain features (Scoring, Conduct).
         """
         try:
             if not self.client:
                 return {"text": "Brain not initialized. Please upload a CV first.", "score": 0}
             
             # Feature 4 & 5: Strict Output Language Logic
-            # If response_language is explicitly set (from UI), it overrides detected_language for the output.
             target_lang = response_language if response_language else detected_language
             
             lang_instruction = ""
@@ -206,55 +207,79 @@ class InterviewBrain:
             elif (target_lang and target_lang.lower() in ["en", "english"]) and (detected_language and detected_language.lower() not in ["en", "english"]):
                  lang_instruction = f"[SYSTEM INSTRUCTION: The user is speaking in language code '{detected_language}'. UNDERSTAND it, but you MUST reply in ENGLISH only.]\n\n"
 
-            # Case C: Auto-Detect (No strict target set) -> Reply in same language
+            # Case C: Auto-Detect
             elif not response_language and detected_language and detected_language != "en":
                  lang_instruction = f"[SYSTEM NOTE: The user is speaking in language code '{detected_language}'. Reply in this language.]\n\n"
             
-            # Add user message with hidden instruction
+            # Add user message
             full_content = lang_instruction + user_text
             self.history.append({"role": "user", "content": full_content})
             
+            # Request JSON Mode (implicit via prompt, but we set response_format if using newer models, 
+            # but to be safe with all models we just parse the text).
             completion = self._safe_completion(
                 messages=self.history,
                 temperature=0.7,
                 max_tokens=1024
             )
             
-            ai_text = self._extract_content(completion)
+            raw_content = self._extract_content(completion)
             
-            # Add assistant response
+            # --- JSON PARSING LOGIC ---
+            import json
+            import re
+            
+            ai_text = "I am having trouble processing that."
+            signal_score = 0
+            terminate = False
+            
+            try:
+                # 1. Clean Markdown Code Blocks
+                clean_json = re.sub(r"```json\n|\n```", "", raw_content).strip()
+                # 2. Parse
+                data = json.loads(clean_json)
+                
+                ai_text = data.get("response_text", "Could not generate response.")
+                signal_score = data.get("signal_score", 0)
+                warning_issued = data.get("warning_issued", False)
+                terminate_flag = data.get("terminate_interview", False)
+                
+                # 3. Handle Conduct Logic
+                if warning_issued:
+                    self.warning_count += 1
+                    print(f"[Brain] WARNING ISSUED ({self.warning_count}/2)")
+                    
+                    if self.warning_count >= 2:
+                        terminate = True
+                        ai_text = "Your conduct has been repeatedly unprofessional. I am terminating this interview immediately. (Score: 0)"
+                        signal_score = 0
+                
+                if terminate_flag:
+                     terminate = True
+                     signal_score = 0
+            
+            except json.JSONDecodeError:
+                print(f"[Brain] JSON Parse Error. Raw: {raw_content}")
+                # Fallback: Treat whole raw content as text if it's not JSON
+                ai_text = raw_content
+                signal_score = 50 # Neutral score on error
+            except Exception as e:
+                print(f"[Brain] Logic Error: {e}")
+                ai_text = raw_content
+            
+            # Add assistant response (TEXT only to history, so next turn doesn't get confused by JSON)
+            # Actually, keeping JSON in history might confuse the model if it expects conversation.
+            # Best practice: Add the *text* response to history.
             self.history.append({"role": "assistant", "content": ai_text})
             
-            # Feature 6: Signal Quality Score (Heuristic)
-            # ... (rest unchanged)
-            # 1. Answer Length (Longer is generally better for depth, up to a point)
-            word_count = len(user_text.split())
-            length_score = min(100, (word_count / 50) * 100) # 50 words = 100%
-            
-            # 2. Specificity (Simple keyword check)
-            # In a real system, this would be an LLM Call, but for speed/cost we use heuristics or just placeholder
-            # For this upgrade, let's keep it simple: Length + complexity
-            avg_word_len = sum(len(w) for w in user_text.split()) / (word_count if word_count else 1)
-            complexity_score = min(100, (avg_word_len / 6) * 100) # Avg word len 6 = 100%
-            
-            signal_score = int((0.7 * length_score) + (0.3 * complexity_score))
-            
-            # Return tuple: (ai_text, signal_score) - Update Orchestrator to handle this!
-            # Wait, Orchestrator expects string.
-            # To maintain backward compatibility while "returning hidden score", 
-            # I can attach it to the history metadata or just log it.
-            # The prompt says "Store in session state".
-            # Safest way without breaking Orchestrator signature too much: return a dict or object?
-            # Or just print it for now? "Return hidden score... Store in session state".
-            # Orchestrator calls: ai_text = self.brain.generate_response(...)
-            # If I return a tuple, Orchestrator breaks.
-            # I will modify Orchestrator to handle tuple return.
-            
-            return {"text": ai_text, "score": signal_score}
+            return {
+                "text": ai_text, 
+                "score": signal_score, 
+                "terminate": terminate
+            }
             
         except Exception as e:
-            # Crucial: print the exact error so it shows up in Streamlit Cloud logs
             print(f"!!! AZURE BRAIN ERROR !!!: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
-            return {"text": "I'm having trouble thinking right now. Could you repeat that?", "score": 0}
+            return {"text": "I'm having trouble thinking right now. Could you repeat that?", "score": 0, "terminate": False}

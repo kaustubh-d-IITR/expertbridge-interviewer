@@ -140,6 +140,12 @@ def main():
              with st.chat_message(sender):
                  st.write(message)
 
+        # Feature 6: Termination Check
+        if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
+             st.error("🚨 INTERVIEW TERMINATED DUE TO CONDUCT VIOLATIONS. (Score: 0/100)")
+             st.warning("Please reset the interview to try again (if allowed).")
+             st.stop()
+
         # Audio Input
         audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
         audio_value = st.audio_input("Record your answer", key=audio_key)
