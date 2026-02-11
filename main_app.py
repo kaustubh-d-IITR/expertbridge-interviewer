@@ -110,7 +110,7 @@ def main():
                     cv_text = parse_cv(uploaded_file)
                     st.session_state.cv_text = cv_text
                     
-                    # Initialize Orchestrator (v3 reused)
+                # Initialize Orchestrator (v3 reused)
                     st.session_state.orchestrator_v3.start_interview(
                         st.session_state.candidate_name, 
                         cv_text, 
@@ -118,10 +118,16 @@ def main():
                         mode=st.session_state.mode
                     )
                     st.session_state.interview_active = True
+                    import time
+                    st.session_state.start_time = time.time()
                     st.success("Interview Started! Please introduce yourself.")
         
         # Reset Button (For Testing)
         if st.session_state.interview_active:
+            import time
+            elapsed = time.time() - st.session_state.get("start_time", time.time())
+            st.sidebar.markdown(f"**⏱️ Time Elapsed:** {int(elapsed // 60)}m {int(elapsed % 60)}s")
+            
             st.markdown("---")
             if st.button("🔄 Reset Interview", type="primary"):
                 # Clear critical session state
@@ -142,7 +148,7 @@ def main():
 
         # Feature 6: Termination Check
         if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
-             st.error("🚨 INTERVIEW TERMINATED DUE TO CONDUCT VIOLATIONS. (Score: 0/100)")
+             st.error("🚨 INTERVIEW TERMINATED (Conduct/Time).")
              st.warning("Please reset the interview to try again (if allowed).")
              st.stop()
 
@@ -154,11 +160,15 @@ def main():
              with st.spinner("Listening..."):
                  mime_type = audio_value.type
                  
+                 import time
+                 elapsed_seconds = time.time() - st.session_state.get("start_time", time.time())
+                 
                  settings = {
                     "input_language": st.session_state.get("input_language", "English"),
                     "response_language": st.session_state.get("response_language", "English"),
                     "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
-                    "job_context": st.session_state.get("current_job_context", None)
+                    "job_context": st.session_state.get("current_job_context", None),
+                    "elapsed_time": elapsed_seconds # Feature 7: Pass elapsed time
                  }
 
                  user_text, ai_text, ai_audio, _ = st.session_state.orchestrator_v3.run_interview_turn(

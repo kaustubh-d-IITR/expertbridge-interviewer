@@ -11,12 +11,14 @@ class Orchestrator:
         # Interview State
         self.phase = "INTERVIEW" 
         self.question_count = 0
-        self.max_questions = 7 # Increased for depth
+        self.max_questions = 7 
+        self.final_warning_given = False # Feature 7: Track if 13m warning sent
 
     def start_interview(self, candidate_name, cv_text, job_context=None, mode="standard"):
         """
         Initializes the interview with optional Job Context.
         """
+        self.final_warning_given = False # Reset on start
         self.brain.set_context(candidate_name, cv_text, job_context, mode=mode)
 
     def run_interview_turn(self, audio_input, mime_type="audio/wav", settings=None):
@@ -26,6 +28,14 @@ class Orchestrator:
         """
         if not settings:
             settings = {}
+
+        # Feature 7: Time Management Logic
+        elapsed_time = settings.get("elapsed_time", 0)
+        
+        # A. Hard Stop (15 Minutes = 900s). Buffer at 890s.
+        if elapsed_time > 890:
+             self.phase = "TERMINATED"
+             return None, "Time is up. The interview is now over. Thank you.", None, False
 
         # 1. Listener: Transcribe audio
         transcription_result = self.listener.get_transcription(audio_input, mime_type)
@@ -43,6 +53,13 @@ class Orchestrator:
         
         if not user_text:
             return None, "I didn't hear anything.", None, False
+
+        # Feature 7B: 13 Minute Warning (780s)
+        # Inject "Final Question" prompt if not done yet
+        if elapsed_time > 780 and not self.final_warning_given:
+            print("[Orchestrator] 13 Minute Mark - Injecting Final Question Prompt")
+            user_text = "[SYSTEM ALERT: Time is almost up (13 mins passed). You must ask ONE FINAL short question and then wrap up. Do NOT ask multiple questions.]\n\n" + user_text
+            self.final_warning_given = True
 
         # 2. Brain: Generate response
         try:
