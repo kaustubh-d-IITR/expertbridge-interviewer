@@ -88,12 +88,19 @@ def main():
 
         # 2. Language & Voice
         st.subheader("2. Audio Settings")
-        language = st.selectbox("Interview Language", ["English", "Hindi", "French", "Spanish"], index=0)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+             input_language = st.selectbox("Input Language (You)", ["English", "Hindi", "French", "Spanish"], index=0, help="Language you will speak.")
+        with col2:
+             response_language = st.selectbox("Response Language (AI)", ["English", "Hindi", "French", "Spanish"], index=0, help="Language AI will speak and write.")
+        
         voice_gender = st.radio("Interviewer Voice", ["Female (Asteria)", "Male (Orion)"], index=0)
         
         # Store settings in session state for other modules to access
         st.session_state.voice_model = "aura-asteria-en" if "Female" in voice_gender else "aura-orion-en"
-        st.session_state.language = language
+        st.session_state.input_language = input_language
+        st.session_state.response_language = response_language
 
         st.markdown("---")
         # Feature 4: Recruiter Mode Toggle
@@ -153,7 +160,8 @@ def main():
                  mime_type = audio_value.type
                  
                  settings = {
-                    "language": st.session_state.get("language", "English"),
+                    "input_language": st.session_state.get("input_language", "English"),
+                    "response_language": st.session_state.get("response_language", "English"),
                     "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
                     "job_context": st.session_state.get("current_job_context", None)
                  }

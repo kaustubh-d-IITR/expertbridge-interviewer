@@ -46,8 +46,14 @@ class Orchestrator:
 
         # 2. Brain: Generate response
         try:
-             # Feature 2: Pass detected language for adaptive response
-             brain_response = self.brain.generate_response(user_text, detected_language=detected_lang)
+             # Feature 2 & 4: Pass detected language AND strict response language
+             response_lang = settings.get("response_language", None)
+             
+             brain_response = self.brain.generate_response(
+                 user_text, 
+                 detected_language=detected_lang,
+                 response_language=response_lang
+             )
              
              # Feature 6: Handle Signal Score (Hidden)
              if isinstance(brain_response, dict):
@@ -64,8 +70,13 @@ class Orchestrator:
 
         # 3. Speaker: Convert response to audio
         voice_model = settings.get("voice_model", "aura-asteria-en")
+        response_lang = settings.get("response_language", None)
+        
+        # TTS Language: Use explicit response language if set, else detected
+        tts_lang = response_lang if response_lang else detected_lang
+        
         try:
-            ai_audio = self.speaker.text_to_speech(ai_text, voice_model=voice_model, language=detected_lang)
+            ai_audio = self.speaker.text_to_speech(ai_text, voice_model=voice_model, language=tts_lang)
         except Exception as e:
             print(f"Speaker Error: {e}")
             ai_audio = None

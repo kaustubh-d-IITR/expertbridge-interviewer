@@ -183,19 +183,26 @@ class InterviewBrain:
             traceback.print_exc()
             return "Hello! I am ready to interview you. Could you please introduce yourself?"
 
-    def generate_response(self, user_text, detected_language="en"):
+    def generate_response(self, user_text, detected_language="en", response_language=None):
         """
         Generates a response to the user's input.
         Adaptive Language: Injects instructions to reply in the user's language.
         """
         try:
             if not self.client:
-                return "Brain not initialized. Please upload a CV first."
+                return {"text": "Brain not initialized. Please upload a CV first.", "score": 0}
             
-            # Language Adaptation Rule
+            # Feature 4: Strict Output Language Logic
+            # If response_language is explicitly set (from UI), it overrides detected_language for the output.
+            target_lang = response_language if response_language else detected_language
+            
             lang_instruction = ""
-            if detected_language and detected_language != "en":
-                lang_instruction = f"[SYSTEM NOTE: The user is speaking in language code '{detected_language}'. You MUST reply in this language. If it is Hindi/Hinglish, reply in Hinglish. Do not mention that you are switching languages.]\n\n"
+            if target_lang and target_lang != "en" and target_lang != "English":
+                 # Strict instruction for specific language
+                 lang_instruction = f"[SYSTEM INSTRUCTION: You MUST reply in {target_lang}. Use the native script for {target_lang} (e.g., Devanagari for Hindi). Do NOT use English script for Hindi terms.]\n\n"
+            elif detected_language and detected_language != "en":
+                 # Fallback to auto-detect behavior if no strict response language set
+                 lang_instruction = f"[SYSTEM NOTE: The user is speaking in language code '{detected_language}'. Reply in this language.]\n\n"
             
             # Add user message with hidden instruction
             full_content = lang_instruction + user_text
