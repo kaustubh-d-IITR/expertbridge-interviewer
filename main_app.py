@@ -96,7 +96,12 @@ def main():
         st.session_state.language = language
 
         st.markdown("---")
-        st.info("💡 **Phase 2 Update:**\nCoding challenges disabled.\nFocus on Domain Expertise.")
+        # Feature 4: Recruiter Mode Toggle
+        recruiter_mode = st.checkbox("🔥 Recruiter Mode (10-min, Aggressive)", value=False)
+        mode = "recruiter" if recruiter_mode else "standard"
+        st.session_state.mode = mode
+
+        st.info("💡 **Phase 3 Upgrade:**\n- Auto-Language Detect\n- Adaptive Brain\n- Recruiter Persona")
 
         # Sidebar: CV Upload (Original content, moved after new settings)
         st.header("Upload Resume")
@@ -113,7 +118,8 @@ def main():
                     st.session_state.orchestrator.start_interview(
                         st.session_state.candidate_name, 
                         cv_text, 
-                        st.session_state.get("current_job_context")
+                        st.session_state.get("current_job_context"),
+                        mode=st.session_state.mode # Pass mode here
                     )
                     st.session_state.interview_active = True
                     st.success("Interview Started! Please introduce yourself.")

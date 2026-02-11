@@ -94,16 +94,23 @@ class InterviewBrain:
         except Exception as e:
             return f"Error evaluating code: {e}"
 
-    def set_context(self, candidate_name, cv_text, job_context=None):
+    def set_context(self, candidate_name, cv_text, job_context=None, mode="standard"):
         """
         Initializes the chat history with system prompt and context.
         Returns the initial greeting from the AI.
         """
         if not self.client:
             return "Error: Azure OpenAI API Key not configured."
+        
+        # Feature 3: Recruiter Mode Override
+        if mode == "recruiter":
+            from src.utils.prompts import RECRUITER_SYSTEM_PROMPT
+            system_instruction = RECRUITER_SYSTEM_PROMPT + f"\n\nCONTEXT:\nCandidate: {candidate_name}\nCV Summary: {cv_text[:500]}..."
             
-        # Dynamic System Prompt Construction
-        if job_context:
+            initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nYou are in RECRUITER MODE. Start immediately with Question 1."
+        
+        # Standard Mode (with Job Context)
+        elif job_context:
             role_title = job_context.get('job_title', 'Expert')
             domain = job_context.get('industry_domain', 'General')
             requirements = job_context.get('killer_requirements', [])
@@ -143,16 +150,18 @@ class InterviewBrain:
             - Do not explicitly state "Question 1" or "Question 2". Just ask naturally.
             - After Question 6, conclude the interview.
             """
+            
+            initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question (Phase 1: Resume Skills)."
+
         else:
             # Fallback to generic prompt if no job selected
             system_instruction = INTERVIEWER_SYSTEM_PROMPT + "\n\nWe are starting the interview. Ask distinct technical questions relevant to their CV."
+            initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer and asking the first question."
 
         # Reset history
         self.history = [
             {"role": "system", "content": system_instruction}
         ]
-        
-        initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nPlease start the interview by introducing yourself as the interviewer for the {job_context.get('job_title', 'role') if job_context else 'role'} and asking the first question (Phase 1: Resume Skills)."
         
         # Add the context as a user message to trigger the start
         self.history.append({"role": "user", "content": initial_message})
@@ -174,16 +183,23 @@ class InterviewBrain:
             traceback.print_exc()
             return "Hello! I am ready to interview you. Could you please introduce yourself?"
 
-    def generate_response(self, user_text):
+    def generate_response(self, user_text, detected_language="en"):
         """
         Generates a response to the user's input.
+        Adaptive Language: Injects instructions to reply in the user's language.
         """
         try:
             if not self.client:
                 return "Brain not initialized. Please upload a CV first."
             
-            # Add user message
-            self.history.append({"role": "user", "content": user_text})
+            # Language Adaptation Rule
+            lang_instruction = ""
+            if detected_language and detected_language != "en":
+                lang_instruction = f"[SYSTEM NOTE: The user is speaking in language code '{detected_language}'. You MUST reply in this language. If it is Hindi/Hinglish, reply in Hinglish. Do not mention that you are switching languages.]\n\n"
+            
+            # Add user message with hidden instruction
+            full_content = lang_instruction + user_text
+            self.history.append({"role": "user", "content": full_content})
             
             completion = self._safe_completion(
                 messages=self.history,
@@ -196,11 +212,35 @@ class InterviewBrain:
             # Add assistant response
             self.history.append({"role": "assistant", "content": ai_text})
             
-            return ai_text
+            # Feature 6: Signal Quality Score (Heuristic)
+            # 1. Answer Length (Longer is generally better for depth, up to a point)
+            word_count = len(user_text.split())
+            length_score = min(100, (word_count / 50) * 100) # 50 words = 100%
+            
+            # 2. Specificity (Simple keyword check)
+            # In a real system, this would be an LLM Call, but for speed/cost we use heuristics or just placeholder
+            # For this upgrade, let's keep it simple: Length + complexity
+            avg_word_len = sum(len(w) for w in user_text.split()) / (word_count if word_count else 1)
+            complexity_score = min(100, (avg_word_len / 6) * 100) # Avg word len 6 = 100%
+            
+            signal_score = int((0.7 * length_score) + (0.3 * complexity_score))
+            
+            # Return tuple: (ai_text, signal_score) - Update Orchestrator to handle this!
+            # Wait, Orchestrator expects string.
+            # To maintain backward compatibility while "returning hidden score", 
+            # I can attach it to the history metadata or just log it.
+            # The prompt says "Store in session state".
+            # Safest way without breaking Orchestrator signature too much: return a dict or object?
+            # Or just print it for now? "Return hidden score... Store in session state".
+            # Orchestrator calls: ai_text = self.brain.generate_response(...)
+            # If I return a tuple, Orchestrator breaks.
+            # I will modify Orchestrator to handle tuple return.
+            
+            return {"text": ai_text, "score": signal_score}
             
         except Exception as e:
             # Crucial: print the exact error so it shows up in Streamlit Cloud logs
             print(f"!!! AZURE BRAIN ERROR !!!: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
-            return "I'm having trouble thinking right now. Could you repeat that?"
+            return {"text": "I'm having trouble thinking right now. Could you repeat that?", "score": 0}

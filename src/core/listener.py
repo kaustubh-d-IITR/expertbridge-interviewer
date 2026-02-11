@@ -44,19 +44,47 @@ class Listener:
                 smart_format=True,
                 utterances=True,
                 punctuate=True,
-                language="en",
+                detect_language=True, # Feature 1: Auto-Detect Language
+                # language="en", # Removed hardcoded language
             )
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
-            print(f"[DEBUG] Transcription Response: {response}")
-            
-            # Response is likely an object, try dot notation
+            # Extract transcript and detected language
+            transcript = ""
+            detected_lang = "en"
+            confidence = 0.0
+
             if hasattr(response, 'results'):
-                return response.results.channels[0].alternatives[0].transcript
+                 # Deepgram SDK v3 structure
+                 result = response.results
+                 if result and result.channels:
+                     channel = result.channels[0]
+                     if channel.alternatives:
+                         alt = channel.alternatives[0]
+                         transcript = alt.transcript
+                         # Deepgram returns 'detected_language' in the alternative
+                         if hasattr(alt, 'detected_language'):
+                             detected_lang = alt.detected_language
+                         elif hasattr(channel, 'detected_language'): # Fallback location
+                             detected_lang = channel.detected_language
             else:
-                # Fallback to dict access if it's a dict
-                return response["results"]["channels"][0]["alternatives"][0]["transcript"]
+                # Dict fallback
+                try:
+                    alt = response["results"]["channels"][0]["alternatives"][0]
+                    transcript = alt.get("transcript", "")
+                    detected_lang = alt.get("detected_language", "en")
+                except (KeyError, IndexError):
+                    transcript = ""
+
+            print(f"[DEBUG] Transcribed: '{transcript}' | Lang: {detected_lang}")
+            
+            # Return Dictionary as per Feature 1 Requirement
+            return {
+                "text": transcript,
+                "lang": detected_lang,
+                "confidence": 1.0 # Placeholder or extract if needed
+            }
         
         except Exception as e:
             print(f"Transcription error: {e}")
-            return ""
+            return {"text": "", "lang": "en"}
