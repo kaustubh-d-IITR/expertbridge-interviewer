@@ -1,9 +1,10 @@
 import os
 from openai import AzureOpenAI
 from src.utils.prompts import INTERVIEWER_SYSTEM_PROMPT, DOMAIN_PERSONAS
+from src.utils.question_strategy import build_question_strategy
 
 class InterviewBrain:
-    def __init__(self):
+    def __init__(self, expert_profile=None):
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-audio-AI-Assessment")
@@ -20,7 +21,15 @@ class InterviewBrain:
             
         self.model_name = self.deployment_name
         self.history = []
-        self.warning_count = 0 # Feature 6: Conduct Tracking`,StartLine:21,TargetContent:`        self.model_name = self.deployment_name
+        self.warning_count = 0 # Feature 6: Conduct Tracking
+        
+        # Phase 17: Personalization
+        self.expert_profile = expert_profile
+        self.question_strategy = ""
+        if self.expert_profile:
+             self.question_strategy = build_question_strategy(self.expert_profile)
+             
+        self.model_name = self.deployment_name
         self.history = []
     
     def _safe_completion(self, messages, temperature=0.7, max_tokens=1024):
@@ -108,6 +117,10 @@ class InterviewBrain:
         if mode == "recruiter":
             from src.utils.prompts import RECRUITER_SYSTEM_PROMPT
             system_instruction = RECRUITER_SYSTEM_PROMPT + f"\n\nCONTEXT:\nCandidate: {candidate_name}\nCV Summary: {cv_text[:500]}..."
+            
+            # Phase 17: Inject Personalized Strategy
+            if self.question_strategy:
+                system_instruction += f"\n\n{self.question_strategy}\n\nREMEMBER: Use the expert context above to ask SPECIFIC questions, not generic ones. Reference their skills, experience level, and projects naturally."
             
             initial_message = f"Candidate Name: {candidate_name}\nCV Text:\n{cv_text}\n\nYou are in RECRUITER MODE. Start immediately with Question 1."
         
@@ -358,6 +371,13 @@ class InterviewBrain:
                     
                     # Remove JSON markup if present but parsing failed
                     ai_text_fallback = ai_text_fallback.replace("```json", "").replace("```", "").strip()
+                    
+                    # Phase 18: Emergency Cleaner for "response_text": "..." artifacts
+                    # If we still see "response_text":, try to regex extract just the value
+                    emergency_match = re.search(r'"response_text"\s*:\s*"(.*?)"', ai_text_fallback, re.DOTALL)
+                    if emergency_match:
+                         # Unescape invalid chars if needed, but basic extraction helps significantly
+                         ai_text_fallback = emergency_match.group(1)
                     
                     self.history.append({"role": "assistant", "content": ai_text_fallback})
                     return {

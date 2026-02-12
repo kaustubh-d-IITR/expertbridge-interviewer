@@ -3,9 +3,10 @@ from src.core.brain import InterviewBrain
 from src.core.speaker import Speaker
 
 class Orchestrator:
-    def __init__(self):
+    def __init__(self, expert_profile=None):
         self.listener = Listener()
-        self.brain = InterviewBrain()
+        # Phase 17: Pass profile to Brain
+        self.brain = InterviewBrain(expert_profile=expert_profile)
         self.speaker = Speaker()
         
         # Interview State
@@ -95,8 +96,13 @@ class Orchestrator:
                  
                  if terminate:
                      self.phase = "TERMINATED"
-                     self.final_score = 0 # Conduct violation = 0
-                     print("[Orchestrator] INTERVIEW TERMINATED BY AI.")
+                     # Phase 18 Fix: Don't zero out score. Give them their average.
+                     # Unless it's a very low score loop, but per user request -> "whatever current score he has"
+                     if self.scores:
+                         self.final_score = int(sum(self.scores) / len(self.scores))
+                     else:
+                         self.final_score = 0
+                     print(f"[Orchestrator] INTERVIEW TERMINATED BY AI. Final Score: {self.final_score}")
              else:
                  ai_text = brain_response
                  

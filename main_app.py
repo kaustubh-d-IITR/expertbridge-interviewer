@@ -44,6 +44,8 @@ def main():
         st.session_state.candidate_name = "Candidate"
     if "coding_mode" not in st.session_state:
         st.session_state.coding_mode = False
+    if "expert_profile" not in st.session_state:
+        st.session_state.expert_profile = None
     
     # --- Sidebar Settings ---
     with st.sidebar:
@@ -105,18 +107,24 @@ def main():
         
         if uploaded_file and not st.session_state.interview_active:
             if st.button("Start Interview"):
-                with st.spinner("Analyzing CV..."):
-                    # Parse CV
-                    cv_text = parse_cv(uploaded_file)
-                    st.session_state.cv_text = cv_text
-                    
-                # Initialize Orchestrator (v3 reused)
-                    st.session_state.orchestrator_v3.start_interview(
-                        st.session_state.candidate_name, 
-                        cv_text, 
-                        st.session_state.get("current_job_context"),
-                        mode=st.session_state.mode
-                    )
+                if not st.session_state.expert_profile:
+                    st.error("⚠️ Please fill out and SAVE the Candidate Profile in the main window first!")
+                else:
+                    with st.spinner("Initializing AI Interviewer..."):
+                        # Re-initialize Orchestrator with Profile (Phase 17)
+                        st.session_state.orchestrator_v3 = Orchestrator(expert_profile=st.session_state.expert_profile)
+                        
+                        # Parse CV
+                        cv_text = parse_cv(uploaded_file)
+                        st.session_state.cv_text = cv_text
+                        
+                        # Start Interview
+                        st.session_state.orchestrator_v3.start_interview(
+                            st.session_state.candidate_name, 
+                            cv_text, 
+                            st.session_state.get("current_job_context"),
+                            mode=st.session_state.mode
+                        )
                     st.session_state.interview_active = True
                     import time
                     st.session_state.start_time = time.time()
@@ -242,7 +250,38 @@ def main():
             if last_sender == "assistant" and last_audio:
                 st.audio(last_audio, format="audio/mp3", autoplay=True)
     else:
-        st.info("Please upload a CV and click 'Start Interview' to begin.")
+        # Phase 17: Candidate Profile Form (Main Area)
+        st.title("👤 Candidate Profile")
+        st.markdown("Please tell us about your background so we can tailor the interview.")
+        
+        with st.form("profile_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.text_input("Full Name", value=st.session_state.candidate_name)
+                role = st.text_input("Current Role", placeholder="e.g. Senior Backend Engineer")
+                years = st.number_input("Years of Experience", min_value=0, max_value=50, value=5)
+            with col2:
+                skills = st.text_input("Top Skills (comma-separated)", placeholder="Python, AWS, System Design")
+                industries = st.text_input("Industries (comma-separated)", placeholder="FinTech, E-commerce, AI")
+                companies = st.text_input("Target/Past Companies", placeholder="Google, StartupX")
+            
+            project = st.text_area("Key Project (Briefly describe one major achievement)", 
+                                   placeholder="Built a real-time payment engine handling 10k TPS...")
+            
+            if st.form_submit_button("💾 Save Profile"):
+                st.session_state.candidate_name = name
+                st.session_state.expert_profile = {
+                    "name": name,
+                    "current_role": role,
+                    "experience_years": years,
+                    "top_skills": skills,
+                    "industries": industries,
+                    "past_companies": companies,
+                    "key_project": project
+                }
+                st.success("✅ Profile Saved! You can now upload your CV in the sidebar and start.")
+
+        st.info("👈 **Next Step:** Upload your CV in the sidebar and click 'Start Interview'.")
 
 if __name__ == "__main__":
     main()
