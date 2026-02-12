@@ -124,9 +124,41 @@ def main():
         
         # Reset Button (For Testing)
         if st.session_state.interview_active:
+            # Feature 9: Live Timer (JavaScript)
             import time
-            elapsed = time.time() - st.session_state.get("start_time", time.time())
-            st.sidebar.markdown(f"**⏱️ Time Elapsed:** {int(elapsed // 60)}m {int(elapsed % 60)}s")
+            start_timestamp = st.session_state.get("start_time", time.time())
+            
+            # Container for the timer
+            st.sidebar.markdown(f"""
+                <div style="padding: 10px; border-radius: 5px; background-color: #f0f2f6; margin-bottom: 10px;">
+                    <h3 style="margin:0; color: #333;">⏱️ Time Elapsed</h3>
+                    <div id="live_timer" style="font-size: 24px; font-weight: bold; color: #000;">0m 0s</div>
+                </div>
+                <script>
+                (function() {{
+                    const startTime = {start_timestamp};
+                    
+                    function updateTimer() {{
+                        const now = Date.now() / 1000;
+                        const elapsed = now - startTime;
+                        
+                        if (elapsed < 0) return;
+                        
+                        const minutes = Math.floor(elapsed / 60);
+                        const seconds = Math.floor(elapsed % 60);
+                        
+                        const timerDiv = document.getElementById("live_timer");
+                        if (timerDiv) {{
+                            timerDiv.innerHTML = `${{minutes}}m ${{seconds}}s`;
+                        }}
+                    }}
+                    
+                    // Update immediately and then every second
+                    updateTimer();
+                    setInterval(updateTimer, 1000);
+                }})();
+                </script>
+            """, unsafe_allow_html=True)
             
             st.markdown("---")
             if st.button("🔄 Reset Interview", type="primary"):
