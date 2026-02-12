@@ -228,20 +228,41 @@ class InterviewBrain:
                         max_tokens=1024 
                     )
                 except Exception as e:
-                    # Fallback Logic for Audio Models (e.g. gpt-4o-audio-preview) failing on text-only input
-                    # Check if error is related to audio requirement
+                    # Error Handling & Fallback Strategy
                     error_str = str(e).lower()
+                    
+                    # 1. HANDLE AUDIO MODALITY ERROR (For gpt-audio models)
+                    # "This model requires that either input content or output modality contain audio"
                     if "audio" in error_str and ("modality" in error_str or "input content" in error_str):
-                        import streamlit as st
-                        if "debug_logs" not in st.session_state: st.session_state.debug_logs = ""
-                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Initiating fallback sequence...\n"
+                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Retrying with dummy audio output..."
+                        try:
+                            # Retry SAME model with audio modality
+                            response = self.client.chat.completions.create(
+                                model=self.model_name, 
+                                messages=self.history, 
+                                temperature=0.7,
+                                max_tokens=1024,
+                                modalities=["text", "audio"],
+                                audio={"voice": "alloy", "format": "wav"}
+                            )
+                        except Exception as audio_e:
+                            st.session_state.debug_logs += f"\n[Brain Error]: Modality retry failed: {str(audio_e)}"
+                            # If this fails, proceed to deployment fallbacks below
+                            pass 
+                        else:
+                            # Success!
+                            raw_content = response.choices[0].message.content
+                            # If content is null (sometimes happens with audio models), try transcript
+                            if not raw_content and hasattr(response.choices[0].message, 'audio'):
+                                raw_content = response.choices[0].message.audio.transcript
+                            # Break out of outer try, we have our response
+                            pass 
+                            
+                    # 2. IF NO RESPONSE YET -> DEPLOYMENT FALLBACK LOOP
+                    if not 'response' in locals() or not response:
+                        st.session_state.debug_logs += f"\n[Brain Critical]: Primary model failed. Initiating Deployment Fallback Sequence..."
                         
                         # Define Fallback Candidates
-                        # 1. User defined
-                        # 2. Standard GPT-4o
-                        # 3. GPT-4 Turbo
-                        # 4. GPT-4 Classic
-                        # 5. GPT-3.5 Turbo (Last resort)
                         fallback_candidates = []
                         env_fallback = os.getenv("AZURE_OPENAI_FALLBACK_MODEL")
                         if env_fallback: fallback_candidates.append(env_fallback)
@@ -273,11 +294,15 @@ class InterviewBrain:
                         
                         if not success:
                             st.session_state.debug_logs += f"\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
-                            # Return a friendly error message instead of crashing
-                            return {"text": "System Error: No valid text-only AI model found. Please configure AZURE_OPENAI_FALLBACK_MODEL in your .env file.", "score": 0, "terminate": False}
-                            
+                            return {"text": "System Error: No valid AI model found. Please check deployment names.", "score": 0, "terminate": False}
                     else:
-                        raise e # Re-raise if not the expected error
+                        raise e # Should not reach here if logic above is sound, but simpler to just let valid response fall through
+
+                # Ensure we have raw_content
+                if 'response' in locals() and response:
+                    raw_content = response.choices[0].message.content
+                    if not raw_content and hasattr(response.choices[0].message, 'audio'):
+                         raw_content = response.choices[0].message.audio.transcript
 
                 raw_content = response.choices[0].message.content
                 
