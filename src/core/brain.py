@@ -234,15 +234,48 @@ class InterviewBrain:
                     if "audio" in error_str and ("modality" in error_str or "input content" in error_str):
                         import streamlit as st
                         if "debug_logs" not in st.session_state: st.session_state.debug_logs = ""
-                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Falling back to 'gpt-4o'...\n"
+                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Initiating fallback sequence...\n"
                         
-                        # Retry with gpt-4o
-                        response = self.client.chat.completions.create(
-                            model="gpt-4o", 
-                            messages=self.history, 
-                            temperature=0.7,
-                            max_tokens=1024 
-                        )
+                        # Define Fallback Candidates
+                        # 1. User defined
+                        # 2. Standard GPT-4o
+                        # 3. GPT-4 Turbo
+                        # 4. GPT-4 Classic
+                        # 5. GPT-3.5 Turbo (Last resort)
+                        fallback_candidates = []
+                        env_fallback = os.getenv("AZURE_OPENAI_FALLBACK_MODEL")
+                        if env_fallback: fallback_candidates.append(env_fallback)
+                        
+                        defaults = ["gpt-4o", "gpt-4", "gpt-4-turbo", "gpt-35-turbo"]
+                        for d in defaults:
+                            if d not in fallback_candidates:
+                                fallback_candidates.append(d)
+                                
+                        success = False
+                        last_error = None
+                        
+                        for candidate in fallback_candidates:
+                            try:
+                                print(f"[Brain] Trying fallback model: {candidate}")
+                                response = self.client.chat.completions.create(
+                                    model=candidate, 
+                                    messages=self.history, 
+                                    temperature=0.7,
+                                    max_tokens=1024 
+                                )
+                                st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' SUCCESSFUL."
+                                success = True
+                                break
+                            except Exception as fb_e:
+                                last_error = fb_e
+                                st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' failed ({type(fb_e).__name__})."
+                                continue
+                        
+                        if not success:
+                            st.session_state.debug_logs += f"\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
+                            # Return a friendly error message instead of crashing
+                            return {"text": "System Error: No valid text-only AI model found. Please configure AZURE_OPENAI_FALLBACK_MODEL in your .env file.", "score": 0, "terminate": False}
+                            
                     else:
                         raise e # Re-raise if not the expected error
 
