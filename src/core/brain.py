@@ -190,6 +190,7 @@ class InterviewBrain:
         Generates a response to the user's input.
         Parses JSON output for Smart Brain features (Scoring, Conduct).
         """
+        import streamlit as st # Ensure st is available throughout the scope
         try:
             if not self.client:
                 return {"text": "Brain not initialized. Please upload a CV first.", "score": 0}
