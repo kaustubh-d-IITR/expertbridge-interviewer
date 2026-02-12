@@ -217,19 +217,39 @@ class InterviewBrain:
             
             # Request JSON Mode (implicit via prompt, but we set response_format if using newer models, 
             # but to be safe with all models we just parse the text).
+            raw_content = None # Initialize scope
+            
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model_name, # Use self.model_name instead of hardcoded "gpt-4"
-                    messages=self.history, # Use self.history instead of 'messages'
-                    temperature=0.7,
-                    max_tokens=1024 # Add max_tokens for consistency
-                )
-                
+                try:
+                    response = self.client.chat.completions.create(
+                        model=self.model_name, 
+                        messages=self.history, 
+                        temperature=0.7,
+                        max_tokens=1024 
+                    )
+                except Exception as e:
+                    # Fallback Logic for Audio Models (e.g. gpt-4o-audio-preview) failing on text-only input
+                    # Check if error is related to audio requirement
+                    error_str = str(e).lower()
+                    if "audio" in error_str and ("modality" in error_str or "input content" in error_str):
+                        import streamlit as st
+                        if "debug_logs" not in st.session_state: st.session_state.debug_logs = ""
+                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Falling back to 'gpt-4o'...\n"
+                        
+                        # Retry with gpt-4o
+                        response = self.client.chat.completions.create(
+                            model="gpt-4o", 
+                            messages=self.history, 
+                            temperature=0.7,
+                            max_tokens=1024 
+                        )
+                    else:
+                        raise e # Re-raise if not the expected error
+
                 raw_content = response.choices[0].message.content
                 
                 # Debug: Log raw response
-                # Assuming 'st' is Streamlit and available in this context
-                import streamlit as st # Import st if not already imported
+                import streamlit as st 
                 if "debug_logs" not in st.session_state:
                     st.session_state.debug_logs = ""
                 st.session_state.debug_logs += f"\n[Brain Raw]: {raw_content}"
@@ -276,9 +296,19 @@ class InterviewBrain:
                     }
                     
             except Exception as e:
-                ai_text = raw_content
+                ai_text = str(e) # Fallback to showing exception to UI if critical
+                if raw_content: ai_text = raw_content
+                
+                import streamlit as st
+                if "debug_logs" not in st.session_state:
+                    st.session_state.debug_logs = ""
+                st.session_state.debug_logs += f"\n[Brain Critical Error]: {str(e)}"
             
             # Add assistant response (TEXT only to history, so next turn doesn't get confused by JSON)
+            # (Note: Already added inside try block if successful, but careful not to duplicate if error)
+            # If we fall through here, history might be inconsistent. Let's fix that.
+            
+            return ai_text if 'ai_text' in locals() else "System Error (See Logs)"
             # Actually, keeping JSON in history might confuse the model if it expects conversation.
             # Best practice: Add the *text* response to history.
             self.history.append({"role": "assistant", "content": ai_text})
