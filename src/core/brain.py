@@ -7,7 +7,7 @@ class InterviewBrain:
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-audio-AI-Assessment")
-        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+        self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-01-preview")
 
         if not self.api_key or not self.endpoint:
             raise ValueError("AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT not found in env")
@@ -191,6 +191,7 @@ class InterviewBrain:
         Parses JSON output for Smart Brain features (Scoring, Conduct).
         """
         import streamlit as st # Ensure st is available throughout the scope
+        import re # For robust JSON extraction
         if "debug_logs" not in st.session_state:
             st.session_state.debug_logs = ""
             
@@ -319,8 +320,12 @@ class InterviewBrain:
                 # Attempt to parse JSON
                 import json
                 try:
-                    # remove markdown code fences if present
-                    clean_content = raw_content.replace("```json", "").replace("```", "").strip()
+                    # Robust JSON Extraction using Regex (Find first { and last })
+                    clean_content = raw_content
+                    json_match = re.search(r"\{.*\}", raw_content, re.DOTALL)
+                    if json_match:
+                         clean_content = json_match.group(0)
+                         
                     data = json.loads(clean_content)
                     
                     # Extract fields
@@ -347,9 +352,13 @@ class InterviewBrain:
                     }
                     
                 except json.JSONDecodeError:
-                    st.session_state.debug_logs += f"\n[JSON Error]: Could not parse response."
+                    st.session_state.debug_logs += f"\n[JSON Error]: Could not parse response. Raw: {raw_content[:50]}..."
                     # Fallback: Treat entire content as text (if not empty)
                     ai_text_fallback = raw_content if raw_content else "I encountered an error processing that."
+                    
+                    # Remove JSON markup if present but parsing failed
+                    ai_text_fallback = ai_text_fallback.replace("```json", "").replace("```", "").strip()
+                    
                     self.history.append({"role": "assistant", "content": ai_text_fallback})
                     return {
                         "text": ai_text_fallback,
