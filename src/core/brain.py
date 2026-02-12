@@ -191,6 +191,9 @@ class InterviewBrain:
         Parses JSON output for Smart Brain features (Scoring, Conduct).
         """
         import streamlit as st # Ensure st is available throughout the scope
+        if "debug_logs" not in st.session_state:
+            st.session_state.debug_logs = ""
+            
         try:
             if not self.client:
                 return {"text": "Brain not initialized. Please upload a CV first.", "score": 0}
