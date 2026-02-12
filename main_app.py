@@ -122,17 +122,18 @@ def main():
                     st.session_state.start_time = time.time()
                     st.success("Interview Started! Please introduce yourself.")
         
-        # Reset Button (For Testing)
-        if st.session_state.interview_active:
-            # Feature 9: Live Timer (JavaScript)
+            # Feature 9: Live Timer (JavaScript) - Robust Version
             import time
-            start_timestamp = st.session_state.get("start_time", time.time())
+            if "start_time" not in st.session_state:
+                st.session_state.start_time = time.time()
+                
+            start_timestamp = st.session_state.start_time
             
-            # Container for the timer
-            st.sidebar.markdown(f"""
-                <div style="padding: 10px; border-radius: 5px; background-color: #f0f2f6; margin-bottom: 10px;">
+            # Container for the timer with unique ID logic
+            timer_html = f"""
+                <div id="timer_container" style="padding: 10px; border-radius: 5px; background-color: #f0f2f6; margin-bottom: 10px;">
                     <h3 style="margin:0; color: #333;">⏱️ Time Elapsed</h3>
-                    <div id="live_timer" style="font-size: 24px; font-weight: bold; color: #000;">0m 0s</div>
+                    <div id="live_timer" style="font-size: 24px; font-weight: bold; color: #000;">Loading...</div>
                 </div>
                 <script>
                 (function() {{
@@ -153,12 +154,16 @@ def main():
                         }}
                     }}
                     
+                    // Clear any existing intervals to prevent dupes
+                    if (window.timerInterval) clearInterval(window.timerInterval);
+                    
                     // Update immediately and then every second
                     updateTimer();
-                    setInterval(updateTimer, 1000);
+                    window.timerInterval = setInterval(updateTimer, 1000);
                 }})();
                 </script>
-            """, unsafe_allow_html=True)
+            """
+            st.sidebar.markdown(timer_html, unsafe_allow_html=True)
             
             st.markdown("---")
             if st.button("🔄 Reset Interview", type="primary"):
@@ -192,6 +197,11 @@ def main():
                 
              st.warning("Please reset the interview to try again (if allowed).")
              st.stop()
+             
+        # Debug Logs (Hidden by default)
+        with st.expander("🛠️ System Logs (Debug)", expanded=False):
+            if "debug_logs" in st.session_state:
+                st.text(st.session_state.debug_logs)
 
         # Audio Input
         audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"

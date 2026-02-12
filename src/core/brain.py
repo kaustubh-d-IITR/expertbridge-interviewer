@@ -217,54 +217,65 @@ class InterviewBrain:
             
             # Request JSON Mode (implicit via prompt, but we set response_format if using newer models, 
             # but to be safe with all models we just parse the text).
-            completion = self._safe_completion(
-                messages=self.history,
-                temperature=0.7,
-                max_tokens=1024
-            )
-            
-            raw_content = self._extract_content(completion)
-            
-            # --- JSON PARSING LOGIC ---
-            import json
-            import re
-            
-            ai_text = "I am having trouble processing that."
-            signal_score = 0
-            terminate = False
-            
             try:
-                # 1. Clean Markdown Code Blocks
-                clean_json = re.sub(r"```json\n|\n```", "", raw_content).strip()
-                # 2. Parse
-                data = json.loads(clean_json)
+                response = self.client.chat.completions.create(
+                    model=self.model_name, # Use self.model_name instead of hardcoded "gpt-4"
+                    messages=self.history, # Use self.history instead of 'messages'
+                    temperature=0.7,
+                    max_tokens=1024 # Add max_tokens for consistency
+                )
                 
-                ai_text = data.get("response_text", "Could not generate response.")
-                signal_score = data.get("signal_score", 0)
-                warning_issued = data.get("warning_issued", False)
-                terminate_flag = data.get("terminate_interview", False)
+                raw_content = response.choices[0].message.content
                 
-                # 3. Handle Conduct Logic
-                if warning_issued:
-                    self.warning_count += 1
-                    print(f"[Brain] WARNING ISSUED ({self.warning_count}/2)")
+                # Debug: Log raw response
+                # Assuming 'st' is Streamlit and available in this context
+                import streamlit as st # Import st if not already imported
+                if "debug_logs" not in st.session_state:
+                    st.session_state.debug_logs = ""
+                st.session_state.debug_logs += f"\n[Brain Raw]: {raw_content}"
+                
+                # Attempt to parse JSON
+                import json
+                try:
+                    # remove markdown code fences if present
+                    clean_content = raw_content.replace("```json", "").replace("```", "").strip()
+                    data = json.loads(clean_content)
+                    
+                    # Extract fields
+                    ai_response = data.get("response_text", "I'm not sure how to respond.")
+                    signal_score = data.get("signal_score", 0)
+                    warning_issued = data.get("warning_issued", False)
+                    terminate = data.get("terminate_interview", False)
+                    
+                    # Update State
+                    if warning_issued:
+                        self.warning_count += 1
                     
                     if self.warning_count >= 2:
                         terminate = True
-                        ai_text = "Your conduct has been repeatedly unprofessional. I am terminating this interview immediately. (Score: 0)"
-                        signal_score = 0
-                
-                if terminate_flag:
-                     terminate = True
-                     signal_score = 0
-            
-            except json.JSONDecodeError:
-                print(f"[Brain] JSON Parse Error. Raw: {raw_content}")
-                # Fallback: Treat whole raw content as text if it's not JSON
-                ai_text = raw_content
-                signal_score = 50 # Neutral score on error
+                        
+                    # Add assistant response (TEXT only to history)
+                    self.history.append({"role": "assistant", "content": ai_response})
+
+                    # Return dict for Orchestrator
+                    return {
+                        "text": ai_response,
+                        "score": signal_score,
+                        "terminate": terminate
+                    }
+                    
+                except json.JSONDecodeError:
+                    st.session_state.debug_logs += f"\n[JSON Error]: Could not parse response."
+                    # Fallback: Treat entire content as text (if not empty)
+                    ai_text_fallback = raw_content if raw_content else "I encountered an error processing that."
+                    self.history.append({"role": "assistant", "content": ai_text_fallback})
+                    return {
+                        "text": ai_text_fallback,
+                        "score": 50, # Neutral score on error
+                        "terminate": False
+                    }
+                    
             except Exception as e:
-                print(f"[Brain] Logic Error: {e}")
                 ai_text = raw_content
             
             # Add assistant response (TEXT only to history, so next turn doesn't get confused by JSON)
