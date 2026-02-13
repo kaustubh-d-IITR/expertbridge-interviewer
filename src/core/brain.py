@@ -268,54 +268,48 @@ class InterviewBrain:
             ai_text = "I'm having trouble thinking right now. Could you repeat that?" # Default safety value
             
             try:
+                # Phase 32: Robust Modality Handling
+                # We construct the request parameters dynamically.
+                # If it's an audio model (or if we suspect it is), we add audio params.
+                
+                req_params = {
+                    "model": self.model_name,
+                    "messages": self.history,
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                }
+                
+                # Broader check for audio models
+                # User's model: 'gpt-audio-AI-Assessment'
+                model_lower = self.model_name.lower()
+                if "audio" in model_lower or "gpt-4o-audio" in model_lower:
+                    print(f"[Brain] Detected Audio Model '{self.model_name}'. Forcing audio modality.")
+                    req_params["modalities"] = ["text", "audio"]
+                    req_params["audio"] = {"voice": "alloy", "format": "wav"}
+                
                 try:
-                    # Phase 31: Proactive Modality Handling
-                    # If the model name implies audio capability, we MUST ask for audio output 
-                    # to avoid the "text-only" 400 error.
-                    req_params = {
-                        "model": self.model_name,
-                        "messages": self.history,
-                        "temperature": 0.7,
-                        "max_tokens": 1024
-                    }
-                    
-                    if "audio" in self.model_name.lower():
-                        print(f"[Brain] Detected Audio Model '{self.model_name}'. Forcing audio modality.")
+                    response = self.client.chat.completions.create(**req_params)
+                except Exception as e:
+                    # Retry Logic for Modality Errors
+                    error_str = str(e).lower()
+                    if "modality" in error_str or "audio" in error_str:
+                        print(f"[Brain Warning] Modality Error: {e}. Retrying with FORCED AUDIO...")
                         req_params["modalities"] = ["text", "audio"]
                         req_params["audio"] = {"voice": "alloy", "format": "wav"}
+                        response = self.client.chat.completions.create(**req_params)
+                    else:
+                        raise e
+                        
+                # Success!
+                # Success Handling (for both initial and retry)
+                if response:
+                    raw_content = response.choices[0].message.content
+                    # If content is null (sometimes happens with audio models), try transcript
+                    if not raw_content and hasattr(response.choices[0].message, 'audio'):
+                        raw_content = response.choices[0].message.audio.transcript
                     
-                    response = self.client.chat.completions.create(**req_params)
-
-                except Exception as e:
-                    # Error Handling & Fallback Strategy
-                    error_str = str(e).lower()
-                    
-                    # 1. HANDLE AUDIO MODALITY ERROR (For gpt-audio models)
-                    # "This model requires that either input content or output modality contain audio"
-                    if "audio" in error_str and ("modality" in error_str or "input content" in error_str):
-                        st.session_state.debug_logs += f"\n[Brain Warning]: Model '{self.model_name}' rejected text-only input. Retrying with dummy audio output..."
-                        try:
-                            # Retry SAME model with audio modality
-                            response = self.client.chat.completions.create(
-                                model=self.model_name, 
-                                messages=self.history, 
-                                temperature=0.7,
-                                max_tokens=1024,
-                                modalities=["text", "audio"],
-                                audio={"voice": "alloy", "format": "wav"}
-                            )
-                        except Exception as audio_e:
-                            st.session_state.debug_logs += f"\n[Brain Error]: Modality retry failed: {str(audio_e)}"
-                            # If this fails, proceed to deployment fallbacks below
-                            pass 
-                        else:
-                            # Success!
-                            raw_content = response.choices[0].message.content
-                            # If content is null (sometimes happens with audio models), try transcript
-                            if not raw_content and hasattr(response.choices[0].message, 'audio'):
-                                raw_content = response.choices[0].message.audio.transcript
-                            # Break out of outer try, we have our response
-                            pass 
+                    # We have our response, no need to fallback
+                    pass 
                             
                     # 2. IF NO RESPONSE YET -> DEPLOYMENT FALLBACK LOOP
                     if not 'response' in locals() or not response:

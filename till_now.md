@@ -398,6 +398,11 @@ Azure OpenAI's safety filters for the `gpt-audio` model are extremely strict. Th
 -   **Problem**: `gpt-4o-audio-preview` rejects requests without `modalities=["text", "audio"]`.
 -   **Fix**: Added a check at the start of `generate_response`. If the model name contains "audio", the system now *automatically* adds the required audio parameters to the request. This bypasses the error-prone retry loop entirely.
 
+## Phase 32: Modality Logic Fix (Syntax)
+**Goal:** Fix SyntaxError introduced in Phase 31.
+-   **Problem**: `SyntaxError` and `IndentationError` due to improper `try/except` nesting.
+-   **Fix**: Cleaned up the request logic structure. Removed redundant `try` blocks and ensured the success path is correctly indented.
+
 ## Future Recommendations
 1.  **Report Generation**: Export the chat history and score to PDF.
 2.  **Latency Optimization**: Switch to GPT-4o-Audio-Realtime API for sub-500ms response.
