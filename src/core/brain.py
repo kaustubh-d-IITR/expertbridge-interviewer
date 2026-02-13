@@ -2,7 +2,19 @@ import os
 from openai import AzureOpenAI
 from src.utils.prompts import INTERVIEWER_SYSTEM_PROMPT, DOMAIN_PERSONAS
 from src.utils.question_strategy import build_question_strategy
+from src.utils.question_strategy import build_question_strategy
 from src.utils.sanitizer import clean_ai_response # Phase 23: External Sanitizer
+
+# Phase 35: Semantic Caching Imports
+try:
+    from gptcache import cache
+    from gptcache.manager import get_data_manager, CacheBase, VectorBase
+    from gptcache.embedding import Onnx
+    from gptcache.similarity_evaluation.distance import SearchDistanceEvaluation
+    HAS_CACHE = True
+except ImportError:
+    HAS_CACHE = False
+    print("DEBUG: GPTCache not found. Caching disabled.")
 
 class InterviewBrain:
     def __init__(self, expert_profile=None):
@@ -31,8 +43,43 @@ class InterviewBrain:
         if self.expert_profile:
              self.question_strategy = build_question_strategy(self.expert_profile)
              
+             self.question_strategy = build_question_strategy(self.expert_profile)
+             
         self.model_name = self.deployment_name
         self.history = []
+
+        # Phase 35: Initialize Semantic Cache
+        self.cache_enabled = False
+        if HAS_CACHE:
+            self._init_setup_cache()
+    
+    def _init_setup_cache(self):
+        """
+        Initializes the Semantic Cache using SQLite (Metadata) and Onnx (Embeddings).
+        """
+        try:
+            print("DEBUG: Initializing Semantic Cache...")
+            # Use Onnx for lightweight local embedding generation (no API cost)
+            onnx = Onnx()
+            
+            # Use SQLite for reliable local storage
+            # VectorBase 'faiss' is standard, but 'simple' might be safer if faiss fails. 
+            # We'll try standard config, GPTCache handles numpy fallback usually.
+            data_manager = get_data_manager(
+                CacheBase("sqlite", sql_url="sqlite:///./brain_cache.db"), 
+                VectorBase("faiss", dimension=onnx.dimension)
+            )
+            
+            cache.init(
+                embedding_func=onnx.to_embeddings,
+                data_manager=data_manager,
+                similarity_evaluation=SearchDistanceEvaluation(),
+            )
+            self.cache_enabled = True
+            print("DEBUG: Semantic Cache Activated.")
+        except Exception as e:
+            print(f"WARN: Failed to init Semantic Cache: {e}")
+            self.cache_enabled = False
     
     def _safe_completion(self, messages, temperature=0.7, max_tokens=1024):
         """
@@ -265,8 +312,29 @@ class InterviewBrain:
             # Request JSON Mode (implicit via prompt, but we set response_format if using newer models, 
             # but to be safe with all models we just parse the text).
             raw_content = None # Initialize scope
-            ai_text = "I'm having trouble thinking right now. Could you repeat that?" # Default safety value
+            ai_text = "I'm having trouble thinking right now. Could you repeat that?" 
             
+            # Phase 35: Semantic Cache Lookup
+            # We use the user's last message as the key.
+            # Note: We do NOT cache the whole history, just the QA pair, since audio interviews 
+            # often have atomic Q&A structure (Greeting -> Greeting, Define X -> Definition).
+            if self.cache_enabled:
+                try:
+                    cached_res = cache.get(user_text)
+                    if cached_res:
+                         import streamlit as st
+                         st.session_state.debug_logs += f"\\n[Brain Info]: CACHE HIT! Served from Memory."
+                         print(f"[Brain] Cache Hit for: '{user_text}'")
+                         
+                         self.history.append({"role": "assistant", "content": cached_res})
+                         return {
+                            "text": cached_res,
+                            "score": 0,
+                            "terminate": False
+                        }
+                except Exception as cache_e:
+                    print(f"[Brain] Cache Lookup Failed: {cache_e}")
+
             try:
                 # Phase 32: Robust Modality Handling
                 # We construct the request parameters dynamically.
@@ -300,34 +368,47 @@ class InterviewBrain:
                             response = self.client.chat.completions.create(**req_params)
                         except Exception as retry_e:
                             print(f"[Brain Error] Retry failed: {retry_e}")
-                            # Do NOT raise. Let it fall through to the fallback loop.
-                            pass 
+                            raise retry_e # Rethrow to outer fallback
                     else:
                         print(f"[Brain Error] Primary model failed: {e}")
-                        # Do NOT raise. Let it fall through to the fallback loop.
-                        pass
+                        raise e # Rethrow to outer fallback
                         
                 # Success Handling (for both initial and retry)
                 if response:
+                    # Check for Content Filter
+                    if response.choices[0].finish_reason == 'content_filter':
+                        st.session_state.debug_logs += f"\\n[Brain Alert]: Azure Content Filter Triggered."
+                        return {
+                            "text": "I cannot answer that because it triggered the safety filters. Please ask something else.",
+                            "score": 0,
+                            "terminate": False
+                        }
+
                     raw_content = response.choices[0].message.content
                     # If content is null (sometimes happens with audio models), try transcript
                     if not raw_content and hasattr(response.choices[0].message, 'audio'):
                         raw_content = response.choices[0].message.audio.transcript
                     
-                    # We have our response, no need to fallback
-                    pass 
+                    if not raw_content:
+                        st.session_state.debug_logs += f"\\n[Brain Alert]: Received empty response from model."
+                        # If empty but no error, we might want to try fallback or just return specific error
+                        # Proceeding to fallback if empty...
+                        pass 
+                    else:
+                         # We have our response, no need to fallback
+                         pass 
                             
                 # 2. IF NO RESPONSE YET -> DEPLOYMENT FALLBACK LOOP
-                if not 'response' in locals() or not response:
+                if not raw_content:
                     import streamlit as st
-                    st.session_state.debug_logs += f"\n[Brain Critical]: Primary model failed. Initiating Deployment Fallback Sequence..."
+                    st.session_state.debug_logs += f"\\n[Brain Critical]: Primary model returned no content. Initiating Deployment Fallback Sequence..."
                     
                     # Define Fallback Candidates
                     fallback_candidates = []
                     env_fallback = os.getenv("AZURE_OPENAI_FALLBACK_MODEL")
                     if env_fallback: 
                         fallback_candidates.append(env_fallback)
-                        st.session_state.debug_logs += f"\n[Brain Info]: Added configured fallback model: {env_fallback}"
+                        st.session_state.debug_logs += f"\\n[Brain Info]: Added configured fallback model: {env_fallback}"
                     
                     defaults = ["gpt-4o", "gpt-4", "gpt-4-turbo", "gpt-35-turbo"]
                     for d in defaults:
@@ -347,24 +428,29 @@ class InterviewBrain:
                                 temperature=0.7,
                                 max_tokens=1024 
                             )
-                            st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' SUCCESSFUL."
-                            success = True
-                            break
+                            
+                            if response.choices[0].finish_reason == 'content_filter':
+                                st.session_state.debug_logs += f"\\n[Brain Info]: Fallback '{candidate}' blocked by Content Filter."
+                                continue 
+                                
+                            raw_content = response.choices[0].message.content
+                            if raw_content:
+                                st.session_state.debug_logs += f"\\n[Brain Info]: Fallback to '{candidate}' SUCCESSFUL."
+                                success = True
+                                break
                         except Exception as fb_e:
                             last_error = fb_e
-                            st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' failed ({type(fb_e).__name__})."
+                            st.session_state.debug_logs += f"\\n[Brain Info]: Fallback to '{candidate}' failed ({type(fb_e).__name__})."
                             continue
                     
                     if not success:
-                        st.session_state.debug_logs += f"\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
-                        # Do not raise. Let it bubble up or return error.
-                        return {"text": "System Error: No valid AI model found. Please check deployment names.", "score": 0, "terminate": False}
-
-                # Ensure we have raw_content
-                if 'response' in locals() and response:
-                    raw_content = response.choices[0].message.content
-                    if not raw_content and hasattr(response.choices[0].message, 'audio'):
-                         raw_content = response.choices[0].message.audio.transcript
+                        st.session_state.debug_logs += f"\\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
+                        # Return specific error
+                        return {
+                            "text": f"System Error: Unable to generate response. (Details: {str(last_error) if last_error else 'Empty Response'})", 
+                            "score": 0, 
+                            "terminate": False
+                        }
 
                 if raw_content:
                     # Phase 27: No JSON Parsing. Just return clean text.
@@ -381,6 +467,16 @@ class InterviewBrain:
                     
                     self.history.append({"role": "assistant", "content": ai_text})
                     
+                    # Phase 35: Save to Semantic Cache
+                    if self.cache_enabled and ai_text:
+                        try:
+                            # Only cache reasonable length responses (avoid caching errors)
+                            if len(ai_text) > 5 and "Error" not in ai_text:
+                                cache.data_manager.save(user_text, ai_text, cache.embedding_func(user_text))
+                                print(f"[Brain] Saved response to cache.")
+                        except Exception as save_e:
+                             print(f"[Brain Warning] Failed to save to cache: {save_e}")
+
                     return {
                         "text": ai_text,
                         "score": signal_score, # Mocked
@@ -389,7 +485,12 @@ class InterviewBrain:
                     
             except Exception as e:
                 print(f"Brain Logic Error: {e}")
-                # Fallthrough
+                # Return the specific error to the user
+                return {
+                    "text": f"Error: {type(e).__name__} - {str(e)}", 
+                    "score": 0, 
+                    "terminate": False
+                }
             
             return {
                 "text": ai_text, 
@@ -401,4 +502,4 @@ class InterviewBrain:
             print(f"!!! AZURE BRAIN ERROR !!!: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
-            return {"text": "I'm having trouble thinking right now. Could you repeat that?", "score": 0, "terminate": False}
+            return {"text": f"Critical Error: {str(e)}", "score": 0, "terminate": False}
