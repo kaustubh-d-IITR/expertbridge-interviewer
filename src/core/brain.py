@@ -265,6 +265,7 @@ class InterviewBrain:
             # Request JSON Mode (implicit via prompt, but we set response_format if using newer models, 
             # but to be safe with all models we just parse the text).
             raw_content = None # Initialize scope
+            ai_text = "I'm having trouble thinking right now. Could you repeat that?" # Default safety value
             
             try:
                 try:
