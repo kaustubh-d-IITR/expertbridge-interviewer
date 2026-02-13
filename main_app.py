@@ -28,6 +28,8 @@ def main():
     # --- Session State ---
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    if "expert_profile" not in st.session_state:
+        st.session_state.expert_profile = None
     if "interview_active" not in st.session_state:
         st.session_state.interview_active = False
     if "current_phase" not in st.session_state:
@@ -48,8 +50,6 @@ def main():
         st.session_state.candidate_name = "Candidate"
     if "coding_mode" not in st.session_state:
         st.session_state.coding_mode = False
-    if "expert_profile" not in st.session_state:
-        st.session_state.expert_profile = None
     if "debug_logs" not in st.session_state:
         st.session_state.debug_logs = "" # Phase 34: Ensure Debug Logs exist
 

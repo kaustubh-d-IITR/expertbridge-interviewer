@@ -422,6 +422,11 @@ Azure OpenAI's safety filters for the `gpt-audio` model are extremely strict. Th
 -   **Cause:** The "Hard Reload" logic (Phase 24) set `orchestrator_v3` to `None` to force a refresh. However, the initialization block only checked `if "orchestrator_v3" not in st.session_state`. Since the key existed (with value `None`), it skipped re-initialization.
 -   **Fix:** Updated `main_app.py` to check `if ... or st.session_state.orchestrator_v3 is None`.
 
+## Phase 36: Fix Initialization Order (AttributeError)
+**Goal:** Fix crash where `expert_profile` was accessed before creation.
+-   **Cause:** The logic to re-create the Orchestrator (Phase 35) accessed `st.session_state.expert_profile` to restore the user's profile. However, `expert_profile` was initialized *later* in the file.
+-   **Fix:** Moved `expert_profile` initialization to the very top of `main_app.py` session state block, ensuring it exists before any other component tries to use it.
+
 ## Future Recommendations
 1.  **Report Generation**: Export the chat history and score to PDF.
 2.  **Latency Optimization**: Switch to GPT-4o-Audio-Realtime API for sub-500ms response.
