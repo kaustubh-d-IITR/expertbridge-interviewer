@@ -32,9 +32,12 @@ def main():
         st.session_state.interview_active = False
     if "current_phase" not in st.session_state:
         st.session_state.current_phase = "setup"
-    if "orchestrator_v3" not in st.session_state:
+    if "orchestrator_v3" not in st.session_state or st.session_state.orchestrator_v3 is None:
         try:
             st.session_state.orchestrator_v3 = Orchestrator()
+            # Restore profile if available
+            if st.session_state.expert_profile:
+                st.session_state.orchestrator_v3 = Orchestrator(expert_profile=st.session_state.expert_profile)
         except ValueError as e:
             st.error(f"⚠️ Configuration Missing: {e}")
             st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys:\n```\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\nDEEPGRAM_API_KEY = \"...\"\n```")

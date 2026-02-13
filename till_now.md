@@ -415,7 +415,12 @@ Azure OpenAI's safety filters for the `gpt-audio` model are extremely strict. Th
 **Goal:** Fix missing logs and understand "Trouble Thinking" error.
 -   **Discovery:** `st.session_state.debug_logs` was **never initialized** in `main_app.py`.
 -   **Impact:** When `brain.py` tried to log an error (e.g., `Modality Error`), it executed `st.session_state.debug_logs += ...`. This raised a `KeyError`, which was caught by the outer exception handler, masking the original error and causing the generic "I'm having trouble thinking" message.
--   **Fix:** Added initialization `st.session_state.debug_logs = ""` in `main_app.py`. This should reveal the true errors and potentially prevent the crash itself.
+    -   **Fix:** Added initialization `st.session_state.debug_logs = ""` in `main_app.py`. This should reveal the true errors and potentially prevent the crash itself.
+
+## Phase 35: Fix AttributeError (Orchestrator NoneType)
+**Goal:** Fix crash loop where `orchestrator_v3` is None.
+-   **Cause:** The "Hard Reload" logic (Phase 24) set `orchestrator_v3` to `None` to force a refresh. However, the initialization block only checked `if "orchestrator_v3" not in st.session_state`. Since the key existed (with value `None`), it skipped re-initialization.
+-   **Fix:** Updated `main_app.py` to check `if ... or st.session_state.orchestrator_v3 is None`.
 
 ## Future Recommendations
 1.  **Report Generation**: Export the chat history and score to PDF.
