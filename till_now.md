@@ -403,6 +403,20 @@ Azure OpenAI's safety filters for the `gpt-audio` model are extremely strict. Th
 -   **Problem**: `SyntaxError` and `IndentationError` due to improper `try/except` nesting.
 -   **Fix**: Cleaned up the request logic structure. Removed redundant `try` blocks and ensured the success path is correctly indented.
 
+## Phase 33: Robust Fallback Strategy
+**Goal:** Ensure the system actually falls back to standard text models if the Audio model fails.
+-   **Problem**: Previous error handling `raise e` was killing the process before the fallback loop could run.
+-   **Fix**:
+    -   Refactored `generate_response` to catch and log primary model errors instead of raising them.
+    -   This allows the code to proceed to the "Fallback Loop" when `response` is None.
+    -   Ensured fallback requests use clean/standard parameters (no audio modalities), so they work with `gpt-4o`/`gpt-4`.
+
+## Phase 34: Debug Logging Fix (Root Cause?)
+**Goal:** Fix missing logs and understand "Trouble Thinking" error.
+-   **Discovery:** `st.session_state.debug_logs` was **never initialized** in `main_app.py`.
+-   **Impact:** When `brain.py` tried to log an error (e.g., `Modality Error`), it executed `st.session_state.debug_logs += ...`. This raised a `KeyError`, which was caught by the outer exception handler, masking the original error and causing the generic "I'm having trouble thinking" message.
+-   **Fix:** Added initialization `st.session_state.debug_logs = ""` in `main_app.py`. This should reveal the true errors and potentially prevent the crash itself.
+
 ## Future Recommendations
 1.  **Report Generation**: Export the chat history and score to PDF.
 2.  **Latency Optimization**: Switch to GPT-4o-Audio-Realtime API for sub-500ms response.

@@ -5,6 +5,7 @@ import json # Added import
 from src.ingestion.cv_parser import parse_cv
 from src.ingestion.question_gen import generate_initial_questions
 from src.core.orchestrator import Orchestrator
+from src.utils.sanitizer import clean_ai_response # Phase 26: Import Sanitizer
 
 # Load environment variables
 try:
@@ -46,6 +47,30 @@ def main():
         st.session_state.coding_mode = False
     if "expert_profile" not in st.session_state:
         st.session_state.expert_profile = None
+    if "debug_logs" not in st.session_state:
+        st.session_state.debug_logs = "" # Phase 34: Ensure Debug Logs exist
+
+    # Phase 21/24: Force System Update & Module Reload (Clear Stale State & Cache)
+    SYSTEM_VERSION = "v2.2" # Bumped to v2.2 for Phase 24
+    if st.session_state.get("system_version") != SYSTEM_VERSION:
+        st.session_state.chat_history = []
+        st.session_state.orchestrator_v3 = None 
+        st.session_state.system_version = SYSTEM_VERSION
+        
+        # Nuke Stale Modules from Cache
+        import sys
+        modules_to_nuke = [
+            "src.core.brain", 
+            "src.core.orchestrator", 
+            "src.utils.sanitizer", 
+            "src.utils.question_strategy",
+            "src.utils.prompts"
+        ]
+        for m in modules_to_nuke:
+            if m in sys.modules:
+                del sys.modules[m]
+        
+        st.rerun()
     
     # --- Sidebar Settings ---
     with st.sidebar:
@@ -189,7 +214,12 @@ def main():
         # Display Chat History
         for sender, message, _ in st.session_state.chat_history:
              with st.chat_message(sender):
-                 st.write(message)
+                 # Phase 26: Final UI-Level Sanitization (User Request)
+                 if sender == "assistant":
+                     clean_data = clean_ai_response(message)
+                     st.write(clean_data["text"])
+                 else:
+                     st.write(message)
 
         # Feature 6: Termination Check
         if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
