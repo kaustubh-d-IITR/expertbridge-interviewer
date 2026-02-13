@@ -296,11 +296,17 @@ class InterviewBrain:
                         print(f"[Brain Warning] Modality Error: {e}. Retrying with FORCED AUDIO...")
                         req_params["modalities"] = ["text", "audio"]
                         req_params["audio"] = {"voice": "alloy", "format": "wav"}
-                        response = self.client.chat.completions.create(**req_params)
+                        try:
+                            response = self.client.chat.completions.create(**req_params)
+                        except Exception as retry_e:
+                            print(f"[Brain Error] Retry failed: {retry_e}")
+                            # Do NOT raise. Let it fall through to the fallback loop.
+                            pass 
                     else:
-                        raise e
+                        print(f"[Brain Error] Primary model failed: {e}")
+                        # Do NOT raise. Let it fall through to the fallback loop.
+                        pass
                         
-                # Success!
                 # Success Handling (for both initial and retry)
                 if response:
                     raw_content = response.choices[0].message.content
@@ -311,47 +317,48 @@ class InterviewBrain:
                     # We have our response, no need to fallback
                     pass 
                             
-                    # 2. IF NO RESPONSE YET -> DEPLOYMENT FALLBACK LOOP
-                    if not 'response' in locals() or not response:
-                        st.session_state.debug_logs += f"\n[Brain Critical]: Primary model failed. Initiating Deployment Fallback Sequence..."
-                        
-                        # Define Fallback Candidates
-                        fallback_candidates = []
-                        env_fallback = os.getenv("AZURE_OPENAI_FALLBACK_MODEL")
-                        if env_fallback: 
-                            fallback_candidates.append(env_fallback)
-                            st.session_state.debug_logs += f"\n[Brain Info]: Added configured fallback model: {env_fallback}"
-                        
-                        defaults = ["gpt-4o", "gpt-4", "gpt-4-turbo", "gpt-35-turbo"]
-                        for d in defaults:
-                            if d not in fallback_candidates:
-                                fallback_candidates.append(d)
-                                
-                        success = False
-                        last_error = None
-                        
-                        for candidate in fallback_candidates:
-                            try:
-                                print(f"[Brain] Trying fallback model: {candidate}")
-                                response = self.client.chat.completions.create(
-                                    model=candidate, 
-                                    messages=self.history, 
-                                    temperature=0.7,
-                                    max_tokens=1024 
-                                )
-                                st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' SUCCESSFUL."
-                                success = True
-                                break
-                            except Exception as fb_e:
-                                last_error = fb_e
-                                st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' failed ({type(fb_e).__name__})."
-                                continue
-                        
-                        if not success:
-                            st.session_state.debug_logs += f"\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
-                            return {"text": "System Error: No valid AI model found. Please check deployment names.", "score": 0, "terminate": False}
-                    else:
-                        raise e # Should not reach here if logic above is sound, but simpler to just let valid response fall through
+                # 2. IF NO RESPONSE YET -> DEPLOYMENT FALLBACK LOOP
+                if not 'response' in locals() or not response:
+                    import streamlit as st
+                    st.session_state.debug_logs += f"\n[Brain Critical]: Primary model failed. Initiating Deployment Fallback Sequence..."
+                    
+                    # Define Fallback Candidates
+                    fallback_candidates = []
+                    env_fallback = os.getenv("AZURE_OPENAI_FALLBACK_MODEL")
+                    if env_fallback: 
+                        fallback_candidates.append(env_fallback)
+                        st.session_state.debug_logs += f"\n[Brain Info]: Added configured fallback model: {env_fallback}"
+                    
+                    defaults = ["gpt-4o", "gpt-4", "gpt-4-turbo", "gpt-35-turbo"]
+                    for d in defaults:
+                        if d not in fallback_candidates:
+                            fallback_candidates.append(d)
+                            
+                    success = False
+                    last_error = None
+                    
+                    for candidate in fallback_candidates:
+                        try:
+                            print(f"[Brain] Trying fallback model: {candidate}")
+                            # Phase 33: Ensure fallbacks are TEXT-ONLY (no audio params)
+                            response = self.client.chat.completions.create(
+                                model=candidate, 
+                                messages=self.history, 
+                                temperature=0.7,
+                                max_tokens=1024 
+                            )
+                            st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' SUCCESSFUL."
+                            success = True
+                            break
+                        except Exception as fb_e:
+                            last_error = fb_e
+                            st.session_state.debug_logs += f"\n[Brain Info]: Fallback to '{candidate}' failed ({type(fb_e).__name__})."
+                            continue
+                    
+                    if not success:
+                        st.session_state.debug_logs += f"\n[Brain Critical]: All fallbacks failed. Last error: {str(last_error)}"
+                        # Do not raise. Let it bubble up or return error.
+                        return {"text": "System Error: No valid AI model found. Please check deployment names.", "score": 0, "terminate": False}
 
                 # Ensure we have raw_content
                 if 'response' in locals() and response:
