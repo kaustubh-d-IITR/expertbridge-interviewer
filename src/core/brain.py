@@ -269,12 +269,23 @@ class InterviewBrain:
             
             try:
                 try:
-                    response = self.client.chat.completions.create(
-                        model=self.model_name, 
-                        messages=self.history, 
-                        temperature=0.7,
-                        max_tokens=1024 
-                    )
+                    # Phase 31: Proactive Modality Handling
+                    # If the model name implies audio capability, we MUST ask for audio output 
+                    # to avoid the "text-only" 400 error.
+                    req_params = {
+                        "model": self.model_name,
+                        "messages": self.history,
+                        "temperature": 0.7,
+                        "max_tokens": 1024
+                    }
+                    
+                    if "audio" in self.model_name.lower():
+                        print(f"[Brain] Detected Audio Model '{self.model_name}'. Forcing audio modality.")
+                        req_params["modalities"] = ["text", "audio"]
+                        req_params["audio"] = {"voice": "alloy", "format": "wav"}
+                    
+                    response = self.client.chat.completions.create(**req_params)
+
                 except Exception as e:
                     # Error Handling & Fallback Strategy
                     error_str = str(e).lower()
