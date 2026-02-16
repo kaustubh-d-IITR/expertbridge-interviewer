@@ -105,13 +105,39 @@ class Brain:
             model_to_use = self.deployment_name
             if self.provider == "openai":
                 model_to_use = "gpt-4o-mini"
+            
+            # Feature: Auto-Fallback for Azure
+            fallback_models = ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-35-turbo"]
+            if self.provider == "azure" and model_to_use not in fallback_models:
+                 # If user set a custom name, try it first, but have fallbacks ready
+                 pass 
+            
+            check_models = [model_to_use] + [m for m in fallback_models if m != model_to_use]
+            
+            response = None
+            last_exception = None
+            
+            for model_candidate in check_models:
+                try:
+                    # Skip if candidate is same as what we just failed on (optimization)
+                    response = self.client.chat.completions.create(
+                        model=model_candidate,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=300
+                    )
+                    # If successful, break loop
+                    if response:
+                        model_to_use = model_candidate # Update for logging
+                        break
+                except Exception as e:
+                    last_exception = e
+                    # If 404 (Not Found) or 400 (Bad Request - Audio), continue to next
+                    continue
+            
+            if not response:
+                raise last_exception
 
-            response = self.client.chat.completions.create(
-                model=model_to_use,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=300
-            )
             spoken_text = response.choices[0].message.content.strip()
             if spoken_text.lstrip().startswith("{") and "response_text" in spoken_text:
                 try:

@@ -48,14 +48,28 @@ class ComprehensiveAnalyzer:
         }}
         """
         
-        try:
-             response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-                temperature=0.3
-            )
-             return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"[Analyzer] Error: {e}")
-            return {"error": str(e)}
+        # Feature: Auto-fallback for Analysis
+        fallback_models = ["gpt-4o-mini", "gpt-4o", "gpt-35-turbo", "gpt-4"]
+        check_models = [self.deployment_name] + [m for m in fallback_models if m != self.deployment_name]
+        
+        response = None
+        last_exception = None
+        
+        for model_to_use in check_models:
+            try:
+                 response = self.client.chat.completions.create(
+                    model=model_to_use,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0.3
+                )
+                 if response: break
+            except Exception as e:
+                last_exception = e
+                continue
+                
+        if not response:
+            print(f"[Analyzer] Error: {last_exception}")
+            return {"error": str(last_exception)}
+            
+        return json.loads(response.choices[0].message.content)
