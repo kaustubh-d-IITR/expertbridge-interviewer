@@ -1,0 +1,100 @@
+{
+  "job_title": "Expert in hospitals space",
+  "seniority_level": "Not Specified",
+  "industry_domain": "Healthcare",
+  "geography": {
+    "countries": [
+      "India"
+    ],
+    "regions": [
+      "South India"
+    ],
+    "cities": [
+      "Chennai"
+    ],
+    "notes": ""
+  },
+  "required_domain_expertise": [
+    "Hospitals",
+    "Healthcare consultancy"
+  ],
+  "must_have_company_background": [
+    "Healthcare",
+    "Hospitals"
+  ],
+  "required_technical_skills": [],
+  "required_frameworks_tools": [],
+  "years_of_experience": "Not Specified",
+  "salary_compensation": "Not Specified",
+  "killer_requirements": [
+    "Experience in project execution for hospitals in Chennai",
+    "Consultancy experience in the healthcare sector"
+  ],
+  "question_topics": [
+    "competitive_intensity_hospitals_chennai",
+    "current_beds_expansion_plans",
+    "demand_drivers_hospitals"
+  ],
+  "confidence_score": 70,
+  "flags": [
+    "thin_brief_valid",
+    "questions_converted_to_topics",
+    "domain_focused_extraction",
+    "specific_job_title"
+  ],
+  "raw_model_output_preview": "{\n  \"job_title\": \"Expert in hospitals space\",\n  \"seniority_level\": \"Not Specified\",\n  \"industry_domain\": \"Healthcare\",\n  \"geography\": {\n    \"countries\": [\"India\"],\n    \"regions\": [\"South India\"],\n    \"cities\": [\"Chennai\"]\n  },\n  \"required_domain_expertise\": [\"Hospitals\", \"Healthcare consultancy\"],\n  \"must_have_company_background\": [\"Healthcare\", \"Hospitals\"],\n  \"required_technical_skills\": [],\n  \"required_frameworks_tools\": [],\n  \"years_of_experience\": \"Not Specified\",\n  \"salary_compensation\": \"Not Specified\",\n  \"killer_requirements\": [\n    \"Experience in project execution for hospitals in Chennai\",\n    \"Consultancy experience in the healthcare sector\"\n  ],\n  \"question_topics\": [\n    \"competitive_intensity_hospitals_chennai\",\n    \"current_beds_expansion_plans\",\n    \"demand_drivers_hospitals\"\n  ],\n  \"confidence_score\": 70,\n  \"flags\": [\"thin_brief_valid\", \"questions_converted_to_topics\"]\n}",
+  "certifications": "Not Specified",
+  "years_in_domain": "Not Specified",
+  "company_size": "Not Specified",
+  "required_soft_skills": [],
+  "required_languages": [],
+  "must_not_have": [],
+  "nice_to_have": [],
+  "benefits_perks": [],
+  "missing_fields": [
+    "required_technical_skills"
+  ],
+  "qa_note": {
+    "summary": "Extracted with 'thin but correct' philosophy - only explicit/inferred data",
+    "issues_found": [
+      "required_technical_skills"
+    ],
+    "normalization": [
+      "tech_skills_from_text",
+      "deterministic_geography",
+      "location",
+      "must_not_have",
+      "killer_requirements"
+    ],
+    "extraction_philosophy": "thin_but_correct"
+  },
+  "location": {
+    "remote": false,
+    "onsite": false,
+    "hybrid": false,
+    "cities": [
+      "Chennai"
+    ],
+    "time_zone": "",
+    "time_zone_overlap_hours": null
+  },
+  "qc_status": "REVIEW",
+  "qc_traffic_light": "YELLOW",
+  "qc_reason": "Intermediate confidence or some flags; human review recommended.",
+  "years_of_experience_raw": "Not Specified",
+  "years_of_experience_min": null,
+  "_meta": {
+    "method": "azure_rest",
+    "azure_status": 200,
+    "elapsed": 3.2929916381835938,
+    "retry_count": 0,
+    "attempt_details": [
+      {
+        "attempt": 1,
+        "qc_status": "REVIEW",
+        "azure_status": 200,
+        "elapsed": 3.2929916381835938
+      }
+    ]
+  }
+}

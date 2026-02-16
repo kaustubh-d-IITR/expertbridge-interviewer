@@ -1,0 +1,111 @@
+{
+  "job_title": "Expert in dining restaurant segments",
+  "seniority_level": "Senior",
+  "industry_domain": "Restaurants and Food Services",
+  "geography": {
+    "countries": [
+      "India"
+    ],
+    "regions": [
+      "Metro cities",
+      "Tier I",
+      "Tier II"
+    ],
+    "cities": [
+      "Mumbai"
+    ],
+    "notes": ""
+  },
+  "required_domain_expertise": [
+    "Dining restaurant segments",
+    "Cuisines",
+    "Cafes"
+  ],
+  "must_have_company_background": [
+    "dining chain restaurants",
+    "cafe related companies",
+    "restaurant companies"
+  ],
+  "required_technical_skills": [],
+  "required_frameworks_tools": [],
+  "years_of_experience": "Not Specified",
+  "salary_compensation": "Not Specified",
+  "killer_requirements": [
+    "Experience with dining restaurant segments in India",
+    "Experience with restaurant companies such as Social or similar brands",
+    "Experience with restaurant companies such as Social, any cafe related compan"
+  ],
+  "question_topics": [
+    "market_size_dining_restaurant_chains_india",
+    "store_format_economics_large_vs_small",
+    "cuisine_acceptance_french_mexican",
+    "sssg_dining_restaurants",
+    "manpower_and_shift_planning",
+    "sales_proportion_dining_takeaway_delivery",
+    "sales_proportion_alcohol_vs_food",
+    "store_level_economics_dining_restaurants"
+  ],
+  "confidence_score": 80,
+  "flags": [
+    "thin_brief_valid",
+    "inferred_seniority_safe",
+    "questions_converted_to_topics",
+    "domain_focused_extraction",
+    "specific_job_title"
+  ],
+  "raw_model_output_preview": "{\n  \"job_title\": \"Expert in dining restaurant segments\",\n  \"seniority_level\": \"Senior\",\n  \"industry_domain\": \"Restaurants and Food Services\",\n  \"geography\": {\n    \"countries\": [\"India\"],\n    \"regions\": [\"Metro cities\", \"Tier I\", \"Tier II\"],\n    \"cities\": []\n  },\n  \"required_domain_expertise\": [\"Dining restaurant segments\", \"Cuisines\", \"Cafes\"],\n  \"must_have_company_background\": [\"dining chain restaurants\", \"cafe related companies\", \"restaurant companies\"],\n  \"required_technical_skills\": [],\n  \"required_frameworks_tools\": [],\n  \"years_of_experience\": \"Not Specified\",\n  \"salary_compensation\": \"Not Specified\",\n  \"killer_requirements\": [\n    \"Experience with dining restaurant segments in India\",\n    \"Experience with restaurant companies such as Social or similar brands\"\n  ],\n  \"question_topics\": [\n    \"market_size_dining_restaurant_chains_india\",\n    \"store_format_economics_large_vs_small\",\n    \"cuisine_acceptance_french_mexican\",\n    \"sssg_dining_restaurants\",\n    \"manpower_and_shift_planning\",\n    \"sales_proportion_dining_takeaway_delivery\",\n    \"sales_proportion_alcohol_vs_food\",\n    \"store_level_economics_dining_restaurants\"\n  ],\n  \"confidence_score\": 80,\n  \"flags\": [\"thin_brief_valid\", \"inferred_seniority_safe\", \"questions_converted_to_topics\"]\n}",
+  "certifications": "Not Specified",
+  "years_in_domain": "Not Specified",
+  "company_size": "Not Specified",
+  "required_soft_skills": [],
+  "required_languages": [],
+  "must_not_have": [],
+  "nice_to_have": [],
+  "benefits_perks": [],
+  "missing_fields": [
+    "required_technical_skills"
+  ],
+  "qa_note": {
+    "summary": "Extracted with 'thin but correct' philosophy - only explicit/inferred data",
+    "issues_found": [
+      "required_technical_skills"
+    ],
+    "normalization": [
+      "tech_skills_from_text",
+      "deterministic_geography",
+      "location",
+      "must_not_have",
+      "killer_requirements"
+    ],
+    "extraction_philosophy": "thin_but_correct"
+  },
+  "location": {
+    "remote": false,
+    "onsite": false,
+    "hybrid": false,
+    "cities": [
+      "Mumbai"
+    ],
+    "time_zone": "",
+    "time_zone_overlap_hours": null
+  },
+  "qc_status": "REVIEW",
+  "qc_traffic_light": "YELLOW",
+  "qc_reason": "Intermediate confidence or some flags; human review recommended.",
+  "years_of_experience_raw": "Not Specified",
+  "years_of_experience_min": null,
+  "_meta": {
+    "method": "azure_rest",
+    "azure_status": 200,
+    "elapsed": 4.828333377838135,
+    "retry_count": 0,
+    "attempt_details": [
+      {
+        "attempt": 1,
+        "qc_status": "REVIEW",
+        "azure_status": 200,
+        "elapsed": 4.828333377838135
+      }
+    ]
+  }
+}

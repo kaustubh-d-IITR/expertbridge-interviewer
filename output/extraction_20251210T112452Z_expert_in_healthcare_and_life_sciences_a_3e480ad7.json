@@ -1,0 +1,99 @@
+{
+  "job_title": "Expert in healthcare and life sciences advertising and communications",
+  "seniority_level": "Senior",
+  "industry_domain": "Healthcare and Life Sciences",
+  "geography": {
+    "countries": [],
+    "regions": [],
+    "cities": [],
+    "notes": "Not Specified"
+  },
+  "required_domain_expertise": [
+    "Healthcare marketing",
+    "Integrated communications",
+    "Advertising strategies in HLS",
+    "Community engagement campaigns",
+    "Medical communications",
+    "Data and analytics in healthcare"
+  ],
+  "must_have_company_background": [
+    "Healthcare-focused service providers",
+    "Digital and interactive specialists",
+    "Mid-size PE-backed firms",
+    "Digital business units within IT and consulting firms"
+  ],
+  "required_technical_skills": [],
+  "required_soft_skills": [],
+  "required_languages": [],
+  "required_frameworks_tools": [],
+  "certifications": [],
+  "years_of_experience": "Not Specified",
+  "years_in_domain": "Not Specified",
+  "salary_compensation": "Not Specified",
+  "company_size": "Not Specified",
+  "location": {
+    "remote": false,
+    "onsite": false,
+    "hybrid": false,
+    "cities": [],
+    "time_zone": "",
+    "time_zone_overlap_hours": null
+  },
+  "killer_requirements": [
+    "Experience with offshoring/nearshoring strategies in healthcare marketing",
+    "Expertise in integrated communications and advertising in"
+  ],
+  "must_not_have": [],
+  "nice_to_have": [],
+  "question_topics": [
+    "offshoring_nearshoring_strategy",
+    "service_line_operations_healthcare_marketing",
+    "cost_savings_offshoring_nearshoring",
+    "decision_parameters_offshoring_nearshoring"
+  ],
+  "benefits_perks": [],
+  "confidence_score": 80,
+  "flags": [
+    "inferred_seniority_safe",
+    "questions_converted_to_topics",
+    "thin_brief_valid",
+    "specific_job_title"
+  ],
+  "raw_model_output_preview": "{\n  \"job_title\": \"Expert in healthcare and life sciences advertising and communications\",\n  \"seniority_level\": \"Senior\",\n  \"industry_domain\": \"Healthcare and Life Sciences\",\n  \"geography\": {\n    \"countries\": [],\n    \"regions\": [],\n    \"cities\": [],\n    \"notes\": \"Not Specified\"\n  },\n  \"required_domain_expertise\": [\n    \"Healthcare marketing\",\n    \"Integrated communications\",\n    \"Advertising strategies in HLS\",\n    \"Community engagement campaigns\",\n    \"Medical communications\",\n    \"Data and analytics in healthcare\"\n  ],\n  \"must_have_company_background\": [\n    \"Healthcare-focused service providers\",\n    \"Digital and interactive specialists\",\n    \"Mid-size PE-backed firms\",\n    \"Digital business units within IT and consulting firms\"\n  ],\n  \"required_technical_skills\": [],\n  \"required_soft_skills\": [],\n  \"required_languages\": [],\n  \"required_frameworks_tools\": [],\n  \"certifications\": [],\n  \"years_of_experience\": \"Not Specified\",\n  \"years_in_domain\": \"Not Specified\",\n  \"salary_compensation\": \"Not Specified\",\n  \"company_size\": \"Not Specified\",\n  \"location\": {\n    \"remote\": false,\n    \"onsite\": false,\n    \"hybrid\": false,\n    \"cities\": [],\n    \"time_zone\": \"Not Specified\",\n    \"time_zone_overlap_hours\": null\n  },\n  \"killer_requirements\": [\n    \"Experience with offshoring/nearshoring strategies in healthcare marketing\",\n    \"Expertise in integrated communications and advertising in HLS\"\n  ],\n  \"must_not_have\": [],\n  \"nice_to_have\": [],\n  \"question_topics\": [\n    \"offshoring_nearshoring_strategy\",\n    \"service_line_operations_healthcare_marketing\",\n    \"cost_savings_offshoring_nearshoring\",\n    \"decision_parameters_offshoring_nearshoring\"\n  ],\n  \"benefits_perks\": [],\n  \"confidence_score\": 80,\n  \"flags\": [\n    \"inferred_seniority_safe\",\n    \"questions_converted_to_topics\"\n  ]\n}",
+  "missing_fields": [
+    "required_technical_skills"
+  ],
+  "qa_note": {
+    "summary": "Extracted with 'thin but correct' philosophy - only explicit/inferred data",
+    "issues_found": [
+      "required_technical_skills"
+    ],
+    "normalization": [
+      "tech_skills_from_text",
+      "deterministic_geography",
+      "location",
+      "must_not_have",
+      "killer_requirements"
+    ],
+    "extraction_philosophy": "thin_but_correct"
+  },
+  "qc_status": "REVIEW",
+  "qc_traffic_light": "YELLOW",
+  "qc_reason": "Intermediate confidence or some flags; human review recommended.",
+  "years_of_experience_raw": "Not Specified",
+  "years_of_experience_min": null,
+  "_meta": {
+    "method": "azure_rest",
+    "azure_status": 200,
+    "elapsed": 5.291432619094849,
+    "retry_count": 0,
+    "attempt_details": [
+      {
+        "attempt": 1,
+        "qc_status": "REVIEW",
+        "azure_status": 200,
+        "elapsed": 5.291432619094849
+      }
+    ]
+  }
+}

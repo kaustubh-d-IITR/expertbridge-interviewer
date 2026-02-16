@@ -1,0 +1,98 @@
+{
+  "job_title": "Expert in SAP S/4HANA transformation",
+  "seniority_level": "Not Specified",
+  "industry_domain": "Not Specified",
+  "geography": {
+    "countries": [],
+    "regions": [],
+    "cities": [],
+    "notes": "Not Specified"
+  },
+  "required_domain_expertise": [
+    "SAP S/4HANA",
+    "Greenfield transformation",
+    "Brownfield transformation",
+    "Middleware migration"
+  ],
+  "must_have_company_background": [
+    "SAP consulting firms",
+    "IT services companies"
+  ],
+  "required_technical_skills": [
+    "SAP S/4HANA",
+    "BTP Integration Suite"
+  ],
+  "required_frameworks_tools": [],
+  "years_of_experience": "Not Specified",
+  "salary_compensation": "Not Specified",
+  "killer_requirements": [
+    "Experience with SAP S/4HANA greenfield and brownfield transformation",
+    "Ability to provide solution insights and sizing parameters"
+  ],
+  "question_topics": [
+    "genai_impact_on_project_execution",
+    "middleware_migration_effort_estimations",
+    "sizing_btp_scope_comparison"
+  ],
+  "confidence_score": 70,
+  "flags": [
+    "many_not_specified",
+    "questions_converted_to_topics",
+    "very_thin_brief",
+    "ambiguous_domain",
+    "specific_job_title"
+  ],
+  "raw_model_output_preview": "{\n  \"job_title\": \"Expert in SAP S/4HANA transformation\",\n  \"seniority_level\": \"Not Specified\",\n  \"industry_domain\": \"Not Specified\",\n  \"geography\": {\n    \"countries\": [],\n    \"regions\": [],\n    \"cities\": [],\n    \"notes\": \"Not Specified\"\n  },\n  \"required_domain_expertise\": [\"SAP S/4HANA\", \"Greenfield transformation\", \"Brownfield transformation\", \"Middleware migration\"],\n  \"must_have_company_background\": [\"SAP consulting firms\", \"IT services companies\"],\n  \"required_technical_skills\": [\"SAP S/4HANA\", \"BTP Integration Suite\"],\n  \"required_frameworks_tools\": [],\n  \"years_of_experience\": \"Not Specified\",\n  \"salary_compensation\": \"Not Specified\",\n  \"killer_requirements\": [\n    \"Experience with SAP S/4HANA greenfield and brownfield transformation\",\n    \"Ability to provide solution insights and sizing parameters\"\n  ],\n  \"question_topics\": [\n    \"genai_impact_on_project_execution\",\n    \"middleware_migration_effort_estimations\",\n    \"sizing_btp_scope_comparison\"\n  ],\n  \"confidence_score\": 70,\n  \"flags\": [\"many_not_specified\", \"questions_converted_to_topics\"]\n}",
+  "certifications": "Not Specified",
+  "years_in_domain": "Not Specified",
+  "company_size": "Not Specified",
+  "required_soft_skills": [],
+  "required_languages": [],
+  "must_not_have": [],
+  "nice_to_have": [],
+  "benefits_perks": [],
+  "missing_fields": [
+    "industry_domain"
+  ],
+  "qa_note": {
+    "summary": "Extracted with 'thin but correct' philosophy - only explicit/inferred data",
+    "issues_found": [
+      "industry_domain"
+    ],
+    "normalization": [
+      "tech_skills_from_text",
+      "deterministic_geography",
+      "location",
+      "must_not_have",
+      "killer_requirements"
+    ],
+    "extraction_philosophy": "thin_but_correct"
+  },
+  "location": {
+    "remote": false,
+    "onsite": false,
+    "hybrid": false,
+    "cities": [],
+    "time_zone": "",
+    "time_zone_overlap_hours": null
+  },
+  "qc_status": "REVIEW",
+  "qc_traffic_light": "YELLOW",
+  "qc_reason": "Intermediate confidence or some flags; human review recommended.",
+  "years_of_experience_raw": "Not Specified",
+  "years_of_experience_min": null,
+  "_meta": {
+    "method": "azure_rest",
+    "azure_status": 200,
+    "elapsed": 3.7518362998962402,
+    "retry_count": 0,
+    "attempt_details": [
+      {
+        "attempt": 1,
+        "qc_status": "REVIEW",
+        "azure_status": 200,
+        "elapsed": 3.7518362998962402
+      }
+    ]
+  }
+}
