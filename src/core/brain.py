@@ -27,7 +27,7 @@ class Brain:
         elif os.getenv("OPENAI_API_KEY"):
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             self.provider = "openai"
-            self.deployment_name = "gpt-4o" # Default for standard OpenAI
+            self.deployment_name = "gpt-4o-mini" # Switch to mini to avoid 'audio modality' errors with gpt-4o on some keys
             self.analysis_model = "gpt-4o-mini"
         else:
             raise ValueError("Missing API Keys: Set AZURE_OPENAI_API_KEY/ENDPOINT or OPENAI_API_KEY")

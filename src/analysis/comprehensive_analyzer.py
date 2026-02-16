@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
 import json
 import os
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 
 class ComprehensiveAnalyzer:
     """
@@ -15,6 +15,9 @@ class ComprehensiveAnalyzer:
         
         if self.api_key and self.endpoint:
             self.client = AzureOpenAI(api_key=self.api_key, api_version=self.api_version, azure_endpoint=self.endpoint)
+        elif os.getenv("OPENAI_API_KEY"):
+             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+             self.deployment_name = "gpt-4o-mini"
         else:
             self.client = None
 
