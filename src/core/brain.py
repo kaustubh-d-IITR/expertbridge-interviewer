@@ -101,8 +101,13 @@ class Brain:
     def generate_spoken_response(self, user_input: str, elapsed_time: float) -> str:
         messages = self._build_conversation_messages(user_input, elapsed_time)
         try:
+            # Force gpt-4o-mini for standard OpenAI to avoid audio modality issues
+            model_to_use = self.deployment_name
+            if self.provider == "openai":
+                model_to_use = "gpt-4o-mini"
+
             response = self.client.chat.completions.create(
-                model=self.deployment_name,
+                model=model_to_use,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=300
@@ -120,7 +125,7 @@ class Brain:
             self.question_count += 1
             return spoken_text
         except Exception as e:
-            error_msg = f"Error code: {e}"
+            error_msg = f"Model: {model_to_use} | Error: {e}"
             print(f"[Brain Error] Failed to generate response: {error_msg}")
             self.last_error = str(e) # Store for UI
             return "I apologize, I'm having a technical issue. Could you please repeat that?"
