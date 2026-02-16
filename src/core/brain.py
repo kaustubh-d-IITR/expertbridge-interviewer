@@ -220,17 +220,18 @@ You are evaluating whether this expert has the depth of knowledge, structured th
 and communication skills to advise clients on complex projects.
 
 INTERVIEW STYLE:
-- Professional and respectful at all times
-- Ask thoughtful questions that explore real experience
-- Listen actively - let them talk 80% of the time
-- Ask follow-up questions to get specific examples
-- Encourage concrete details: metrics, outcomes, before/after comparisons
+- **ASK ONE QUESTION AT A TIME.** Never ask multiple questions in one turn.
+- **BE CONCISE.** Keep your responses short (under 2 sentences unless explaining something complex).
+- **LISTEN MORE, TALK LESS.** Let the candidate do 80% of the talking.
+- **DIG DEEPER.** If their answer is vague, ask for specific examples, metrics, or outcomes.
+- **NO LECTURING.** Do not teach them or summarize their answer unless checking understanding.
 
 CONDUCT RULES:
-- If someone is rude or abusive, politely end the interview
-- Never ask them to write code - this is a verbal discussion only
+- If someone is rude or abusive, politely end the interview.
+- Never ask them to write code - this is a verbal discussion only.
 
-IMPORTANT: Respond in plain English. Do NOT output JSON. This is a natural conversation."""
+IMPORTANT: Respond in plain English. Do NOT output JSON. This is a natural conversation. 
+Your goal is to assess them, not to chat endlessly. Move to the next topic once you are satisfied."""
 
     def analyze_answer(self, user_input: str) -> Dict[str, Any]:
         analysis_prompt = f"""Analyze this interview answer and provide a structured assessment.

@@ -20,33 +20,37 @@ class Speaker:
     def text_to_speech(self, text, output_file="output_tts.mp3", voice_model="aura-asteria-en", language="en"):
         """
         Converts text to speech using Deepgram Aura.
-        Returns the path to the audio file.
+        Returns the AUDIO BYTES (not filename).
         """
         try:
-            # Feature 5: Auto-select voice based on language if not manually overridden
-            # Note: Deepgram Aura is currently English-focused. 
-            # If the user asks for "Hindi", we might still have to use an English model 
-            # unless a Hindi model exists. I will keep the logic generic.
-            
+            # Feature 5: Auto-select voice based on language
             final_model = voice_model
-            # Logic: If language is NOT English, try to find a specific model?
-            # For now, we stick to the requested voice_model from UI, 
-            # but if we had language-specific models, we'd pick them here.
             
-            filename = output_file
-            response = self.deepgram.speak.v1.audio.generate(
-                text=text, 
-                model=final_model
+            # Use a temporary filename to avoid conflicts
+            import uuid
+            temp_filename = f"temp_tts_{uuid.uuid4()}.mp3"
+            
+            from deepgram import SpeakOptions
+            options = SpeakOptions(
+                model=final_model,
             )
             
-            # Write the streaming response to file
-            with open(filename, "wb") as f:
-                for chunk in response:
-                    if chunk:
-                        f.write(chunk)
+            # Generate audio to file
+            self.deepgram.speak.v("1").save(temp_filename, {"text": text}, options)
             
-            return filename
+            # Read bytes and cleanup
+            if os.path.exists(temp_filename):
+                with open(temp_filename, "rb") as f:
+                    audio_bytes = f.read()
+                try:
+                    os.remove(temp_filename)
+                except:
+                    pass
+                return audio_bytes
+            else:
+                print("[Speaker] Error: File was not created by Deepgram.")
+                return None
 
         except Exception as e:
-            print(f"TTS Error: {e}")
+            print(f"[Speaker] TTS Error: {e}")
             return None
