@@ -107,7 +107,17 @@ class Brain:
                 model_to_use = "gpt-4o-mini"
             
             # Feature: Auto-Fallback for Azure
-            fallback_models = ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-35-turbo"]
+            # UPDATED: Added user's specific deployments including gpt4-extract variants
+            fallback_models = [
+                "gpt4-extract-updated", 
+                "gpt4-extract-1", 
+                "gpt-4o-mini-query-generation", 
+                "gpt5-mini-core",
+                "gpt-4o", 
+                "gpt-4o-mini", 
+                "gpt-4", 
+                "gpt-35-turbo"
+            ]
             if self.provider == "azure" and model_to_use not in fallback_models:
                  # If user set a custom name, try it first, but have fallbacks ready
                  pass 
@@ -119,13 +129,34 @@ class Brain:
             
             for model_candidate in check_models:
                 try:
-                    # Skip if candidate is same as what we just failed on (optimization)
-                    response = self.client.chat.completions.create(
-                        model=model_candidate,
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=300
-                    )
+                    # Try standard call first (GPT-4o, GPT-4)
+                    try:
+                        response = self.client.chat.completions.create(
+                            model=model_candidate,
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=300
+                        )
+                    except Exception as std_err:
+                        # Check if it's an O1/Reasoning model issue (unsupported params)
+                        err_str = str(std_err).lower()
+                        if "unsupported" in err_str or "parameter" in err_str or "max_tokens" in err_str:
+                             print(f"[Brain] Model '{model_candidate}' rejected standard params. Retrying as O1/Reasoning model...")
+                             # O1 models don't support system role (sometimes) or temperature
+                             # And prefer max_completion_tokens
+                             # We must ensure messages don't have 'system' if it's strict, but newer O1-preview supports it.
+                             # Main issue is usually temperature and max_tokens.
+                             response = self.client.chat.completions.create(
+                                model=model_candidate,
+                                messages=messages,
+                                # No temperature
+                                # Use max_completion_tokens if library supports, else omit
+                                # For safety with old libraries, we'll try without max_tokens first or standard
+                                # But let's assume standard max_tokens was the issue
+                            )
+                        else:
+                            raise std_err # Propagate other errors (like 404, 429)
+
                     # If successful, break loop
                     if response:
                         model_to_use = model_candidate # Update for logging

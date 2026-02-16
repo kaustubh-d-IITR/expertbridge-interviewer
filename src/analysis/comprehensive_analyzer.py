@@ -49,7 +49,17 @@ class ComprehensiveAnalyzer:
         """
         
         # Feature: Auto-fallback for Analysis
-        fallback_models = ["gpt-4o-mini", "gpt-4o", "gpt-35-turbo", "gpt-4"]
+        # UPDATED: Added user's specific deployments
+        fallback_models = [
+            "gpt4-extract-updated", 
+            "gpt4-extract-1", 
+            "gpt-4o-mini-query-generation", 
+            "gpt5-mini-core",
+            "gpt-4o-mini", 
+            "gpt-4o", 
+            "gpt-35-turbo", 
+            "gpt-4"
+        ]
         check_models = [self.deployment_name] + [m for m in fallback_models if m != self.deployment_name]
         
         response = None
@@ -57,12 +67,28 @@ class ComprehensiveAnalyzer:
         
         for model_to_use in check_models:
             try:
-                 response = self.client.chat.completions.create(
-                    model=model_to_use,
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"},
-                    temperature=0.3
-                )
+                 # Standard Call
+                 try:
+                     response = self.client.chat.completions.create(
+                        model=model_to_use,
+                        messages=[{"role": "user", "content": prompt}],
+                        response_format={"type": "json_object"},
+                        temperature=0.3
+                    )
+                 except Exception as std_err:
+                     # O1 Fallback
+                     err_str = str(std_err).lower()
+                     if "unsupported" in err_str or "parameter" in err_str:
+                         print(f"[Analyzer] Retrying '{model_to_use}' with O1 params...")
+                         response = self.client.chat.completions.create(
+                            model=model_to_use,
+                            messages=[{"role": "user", "content": prompt}],
+                            response_format={"type": "json_object"}
+                            # No temperature
+                        )
+                     else:
+                         raise std_err
+
                  if response: break
             except Exception as e:
                 last_exception = e
