@@ -10,7 +10,7 @@ from src.core.orchestrator import Orchestrator
 # Load environment variables
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(override=True)
 except ImportError:
     pass # Expected on Streamlit Cloud (secrets are injected)
 
@@ -58,6 +58,17 @@ def main():
     # --- Sidebar Settings ---
     with st.sidebar:
         st.title("⚙️ Interview Settings")
+        
+        # DEBUG: Show loaded config
+        st.divider()
+        st.subheader("🔧 Config Debug")
+        az_key = os.getenv("AZURE_OPENAI_API_KEY", "")
+        az_end = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+        oa_key = os.getenv("OPENAI_API_KEY", "")
+        
+        st.code(f"Azure Key: {az_key[:5]}...{az_key[-3:] if az_key else 'None'}\n"
+                f"Azure End: {az_end[:20]}...\n"
+                f"OpenAI Key: {oa_key[:5]}...{oa_key[-3:] if oa_key else 'None'}")
         
         # 1. Job Selection
         st.subheader("1. Select Job Role")
