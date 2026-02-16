@@ -136,7 +136,19 @@ class Brain:
                     continue
             
             if not response:
-                raise Exception(f"All models failed. Details: \\n" + "\\n".join(error_log))
+                # DEBUG: Try to list available models to help user fix 404s
+                available_models = []
+                try:
+                    params = {}
+                    # Azure listing often requires no specific params if auth is correct
+                    # adhering to the client interface
+                    model_list = self.client.models.list() 
+                    available_models = [m.id for m in model_list]
+                except Exception as list_err:
+                    available_models = [f"Could not list: {list_err}"]
+
+                raise Exception(f"All models failed. Details: \\n" + "\\n".join(error_log) + f"\\n\\n[DEBUG] Available Deployments in your Azure Resource: {available_models}")
+
 
             spoken_text = response.choices[0].message.content.strip()
             if spoken_text.lstrip().startswith("{") and "response_text" in spoken_text:
