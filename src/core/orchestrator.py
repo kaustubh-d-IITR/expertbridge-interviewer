@@ -49,8 +49,17 @@ class Orchestrator:
             should_terminate = brain_result["terminate"]
             self.phase = brain_result["phase"]
         except Exception as e:
-            print(f"[Orchestrator] Brain error: {e}")
-            return user_text, "I'm having a technical issue. Let me try again.", None, False
+            error_msg = f"[Brain Error] {str(e)}"
+            print(error_msg)
+            # Return the error message as the 4th element (was coding_mode, getting hijacked for debug info or we add a 5th?)
+            # Wait, main_app expects 4 values. Let's hijack the 2nd value (ai_text) to include a user friendly message, 
+            # and we need a way to pass the debug log. 
+            # Actually, I can append to a global log or return a tuple with error info.
+            # Compatibility: main_app expects (user_text, ai_text, ai_audio, coding_mode).
+            # Let's attach the error to the ai_text temporarily or use a side channel? 
+            # BETTER: Orchestrator has state. I can store the last error in self.last_error?
+            self.last_error = error_msg
+            return user_text, "I'm having a technical issue. Please check the System Logs below for details.", None, False
         
         ai_audio = None
         try:

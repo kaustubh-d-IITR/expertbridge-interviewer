@@ -15,7 +15,7 @@ except ImportError:
     pass # Expected on Streamlit Cloud (secrets are injected)
 
 # Check for required API keys early
-if not os.getenv("AZURE_OPENAI_API_KEY") and not os.getenv("DEEPGRAM_API_KEY"):
+if not (os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")) and not os.getenv("DEEPGRAM_API_KEY"):
      st.warning("⚠️ API Keys missing. Please configure them in your .env file or Streamlit Secrets.")
 
 # Page Config (This will be moved inside main() as per instruction)
@@ -42,7 +42,7 @@ def main():
                 st.session_state.orchestrator_v3 = Orchestrator(expert_profile=st.session_state.expert_profile)
         except ValueError as e:
             st.error(f"⚠️ Configuration Missing: {e}")
-            st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys:\n```\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\nDEEPGRAM_API_KEY = \"...\"\n```")
+            st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys (Either Azure OR Standard OpenAI):\n```\n# Option 1: Azure\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\n\n# Option 2: Standard OpenAI\nOPENAI_API_KEY = \"sk-...\"\n\n# Required\nDEEPGRAM_API_KEY = \"...\"\n```")
             st.stop()
     if "cv_text" not in st.session_state:
         st.session_state.cv_text = ""
@@ -244,6 +244,12 @@ def main():
                      mime_type,
                      settings=settings
                  )
+                 
+                 # Feature 34: Capture Debug Logs from Orchestrator
+                 if hasattr(st.session_state.orchestrator_v3, "last_error") and st.session_state.orchestrator_v3.last_error:
+                     st.session_state.debug_logs += f"\n[ERROR] {st.session_state.orchestrator_v3.last_error}"
+                     # Clear it so it doesn't persist forever
+                     st.session_state.orchestrator_v3.last_error = None
                  
                  if user_text:
                      st.session_state.chat_history.append(("user", user_text, None))
