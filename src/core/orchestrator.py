@@ -18,7 +18,10 @@ class Orchestrator:
         self.phase = "READY"
         self.start_time = None
         self.final_score = 0
+        self.final_score = 0
         self.question_count = 0 
+        self.last_error = None # Feature 34
+        
         
     def start_interview(self, candidate_name, cv_text, job_context=None, mode="standard"):
         self.start_time = time.time()
@@ -47,7 +50,17 @@ class Orchestrator:
             ai_text = brain_result["spoken_response"]
             analysis = brain_result["analysis"]
             should_terminate = brain_result["terminate"]
+            ai_text = brain_result["spoken_response"]
+            analysis = brain_result["analysis"]
+            should_terminate = brain_result["terminate"]
             self.phase = brain_result["phase"]
+            
+            # Feature 34: Check for suppressed Brain errors
+            if self.brain.last_error:
+                self.last_error = f"[Brain Internal] {self.brain.last_error}"
+                # We don't overwrite ai_text because it contains the polite message
+                self.brain.last_error = None # Clear it
+
         except Exception as e:
             error_msg = f"[Brain Error] {str(e)}"
             print(error_msg)

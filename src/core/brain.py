@@ -2,7 +2,7 @@ import os
 import json
 import time
 from typing import Dict, Any, Optional
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 
 class Brain:
     """
@@ -17,20 +17,29 @@ class Brain:
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
         self.analysis_model = "gpt-4o-mini"
         
-        if not self.api_key or not self.endpoint:
-            raise ValueError("AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT not found in env")
-            
-        self.client = AzureOpenAI(
-            api_key=self.api_key,
-            api_version=self.api_version,
-            azure_endpoint=self.endpoint
-        )
+        if self.api_key and self.endpoint:
+            self.client = AzureOpenAI(
+                api_key=self.api_key,
+                api_version=self.api_version,
+                azure_endpoint=self.endpoint
+            )
+            self.provider = "azure"
+        elif os.getenv("OPENAI_API_KEY"):
+            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            self.provider = "openai"
+            self.deployment_name = "gpt-4o" # Default for standard OpenAI
+            self.analysis_model = "gpt-4o-mini"
+        else:
+            raise ValueError("Missing API Keys: Set AZURE_OPENAI_API_KEY/ENDPOINT or OPENAI_API_KEY")
+
+        print(f"[Brain] Initialized (Provider: {self.provider})")
         
         self.expert_profile = expert_profile
         self.conversation_history = []
         self.interview_phase = "OPENING"
         self.strike_count = 0
         self.question_count = 0
+        self.last_error = None # Feature 34: Capture internal errors
         
         if expert_profile:
             from src.utils.question_strategy import build_question_strategy
@@ -111,7 +120,9 @@ class Brain:
             self.question_count += 1
             return spoken_text
         except Exception as e:
-            print(f"[Brain Error] Failed to generate response: {e}")
+            error_msg = f"Error code: {e}"
+            print(f"[Brain Error] Failed to generate response: {error_msg}")
+            self.last_error = str(e) # Store for UI
             return "I apologize, I'm having a technical issue. Could you please repeat that?"
     
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
