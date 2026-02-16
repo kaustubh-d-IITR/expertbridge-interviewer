@@ -115,7 +115,7 @@ class Brain:
             check_models = [model_to_use] + [m for m in fallback_models if m != model_to_use]
             
             response = None
-            last_exception = None
+            error_log = []
             
             for model_candidate in check_models:
                 try:
@@ -131,12 +131,12 @@ class Brain:
                         model_to_use = model_candidate # Update for logging
                         break
                 except Exception as e:
-                    last_exception = e
+                    error_log.append(f"{model_candidate}: {str(e)}")
                     # If 404 (Not Found) or 400 (Bad Request - Audio), continue to next
                     continue
             
             if not response:
-                raise last_exception
+                raise Exception(f"All models failed. Details: \\n" + "\\n".join(error_log))
 
             spoken_text = response.choices[0].message.content.strip()
             if spoken_text.lstrip().startswith("{") and "response_text" in spoken_text:
