@@ -30,10 +30,8 @@ class Speaker:
             import uuid
             temp_filename = f"temp_tts_{uuid.uuid4()}.mp3"
             
-            from deepgram import SpeakOptions
-            options = SpeakOptions(
-                model=final_model,
-            )
+            # Simple Dict for Options (Avoids import issues with SpeakOptions)
+            options = {"model": final_model}
             
             # Generate audio to file
             self.deepgram.speak.v("1").save(temp_filename, {"text": text}, options)
