@@ -49,6 +49,14 @@ class Brain:
             
         print("[Brain] Initialized (Refactored v3.0 - AI_REBUILD)")
 
+    def set_job_context(self, job_context: Dict[str, Any]):
+        """
+        Updates the brain with specific job/domain context (from JSON).
+        """
+        self.job_context = job_context
+        print(f"[Brain] Job Context Updated: {job_context.get('role', 'Unknown Role')}")
+
+
     def handle_user_input(self, user_input: str, elapsed_time: float) -> Dict[str, Any]:
         """
         Main entry point for processing user input.
@@ -89,6 +97,18 @@ class Brain:
             self.interview_phase = "QUESTIONS"
         else:
             self.interview_phase = "CLOSING"
+            
+        # Feature: Early Termination Detection (User Request)
+        # If AI says "Thank you" and "Goodbye" after 10 mins, terminate.
+        if elapsed_time > 600 and ("thank you" in spoken_response.lower() or "goodbye" in spoken_response.lower() or "hear back" in spoken_response.lower()):
+             print("[Brain] Detected Closing Statement. Terminating Interview.")
+             return {
+                "spoken_response": spoken_response,
+                "analysis": analysis,
+                "terminate": True, # Triggers result screen in main_app
+                "warning_issued": False,
+                "phase": "TERMINATED"
+            }
         
         return {
             "spoken_response": spoken_response,
@@ -206,10 +226,18 @@ class Brain:
         messages.append({"role": "system", "content": self._get_static_system_prompt()})
         if self.interview_strategy:
             messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
-        if elapsed_time > 780:
-            messages.append({"role": "system", "content": "[TIME WARNING] You have 2 minutes left. Ask ONE final question to wrap up."})
-        elif elapsed_time > 600:
+        
+        # Inject Job/Domain Context
+        if hasattr(self, 'job_context') and self.job_context:
+            context_str = json.dumps(self.job_context, indent=2)
+            messages.append({"role": "system", "content": f"[DOMAIN KNOWLEDGE / JOB CONTEXT]\nUse this context to ask specific, grounded questions:\n{context_str}"})
+
+        # Time Management Prompts
+        if elapsed_time > 780: # > 13 Minutes
+             messages.append({"role": "system", "content": "[CRITICAL TIME WARNING] We are at the 13-minute mark (2 mins left). If you haven't yet, ask ONE final question. If the candidate just answered your final question, you MUST say 'Thank you for your time', provide a brief positive closing, and say Goodbye."})
+        elif elapsed_time > 600: # > 10 Minutes
             messages.append({"role": "system", "content": "[TIME CHECK] You have 5 minutes left. Start moving toward conclusion."})
+            
         messages.extend(self.conversation_history)
         messages.append({"role": "user", "content": user_input})
         return messages

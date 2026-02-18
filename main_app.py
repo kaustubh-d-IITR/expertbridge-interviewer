@@ -166,9 +166,15 @@ def main():
             # Use the robust iframe timer from utils
             try:
                 from src.utils.timer import display_timer
+                
+                # Check for termination to freeze timer
+                stop_timer = False
+                if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
+                    stop_timer = True
+                
                 st.sidebar.markdown("---")
                 with st.sidebar:
-                    display_timer(st.session_state.start_time)
+                    display_timer(st.session_state.start_time, stop=stop_timer)
             except ImportError:
                 st.sidebar.error("Timer Module Missing")
 
