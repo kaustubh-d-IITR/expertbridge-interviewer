@@ -154,6 +154,7 @@ class Brain:
                                 # For safety with old libraries, we'll try without max_tokens first or standard
                                 # But let's assume standard max_tokens was the issue
                             )
+                             print(f"[Brain DEBUG] O1 Retry Success. Response ID: {response.id if response else 'None'}")
                         else:
                             raise std_err # Propagate other errors (like 404, 429)
 
@@ -182,6 +183,7 @@ class Brain:
 
 
             spoken_text = response.choices[0].message.content.strip()
+            print(f"[Brain DEBUG] Raw Spoken Text: '{spoken_text}'")
             if spoken_text.lstrip().startswith("{") and "response_text" in spoken_text:
                 try:
                     data = json.loads(spoken_text)

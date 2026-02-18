@@ -43,6 +43,7 @@ class Speaker:
             
             if response.status_code == 200:
                 audio_bytes = response.content
+                print(f"[Speaker] Success: Generated {len(audio_bytes)} bytes.")
                 return audio_bytes
             else:
                 print(f"[Speaker] HTTP Error: {response.status_code} - {response.text}")
