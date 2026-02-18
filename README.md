@@ -1,103 +1,108 @@
-# ExpertBridge AI Interviewer 🤖
+# ExpertBridge AI Recruiter 🤖🎤
 
-ExpertBridge is an advanced AI-powered technical interviewer designed to conduct realistic, voice-based interviews. It analyzes a candidate's CV, generates relevant questions, listens to spoken answers, and provides a coding challenge if needed.
+**Version 3.0 (Refactored & Enriched)**
 
-## 🌟 Features
-- **Voice-First Interface**: Candidates speak naturally; the AI listens and responds with a human-like voice.
-- **Smart CV Analysis**: Extracts key skills from a PDF resume to tailor the interview.
-- **Structured Phases**:
-  1.  **Theory Phase**: 5 conceptual questions to test depth of knowledge.
-  2.  **Coding Phase**: Triggered after theory, asks the candidate to write code.
-- **Real-time Feedback**: Evaluates code submissions for correctness and efficiency.
+ExpertBridge is an advanced, voice-first AI interviewer designed to screen technical candidates. It uses a **Multi-Layered "Brain"** to generate context-aware questions based on the candidate's CV and the specific Job Description.
 
 ---
 
-## 🛠️ System Architecture
+## 🌟 Key Features (v3.0)
 
-The system mimics a human interviewer's brain using three core "organs":
+### 1. 🧠 Smart "RAG" Brain
+The AI doesn't just ask generic questions. It combines three layers of context:
+*   **Persona**: A professional, probing interviewer personality.
+*   **Strategy**: Analyzes the **Candidate's CV** to tailor questions (e.g., "Ask about your React experience").
+*   **Domain Context**: Injects specific **Job Descriptions (JSON)** from the sidebar directly into the system prompt.
 
-### **1. Language Model (LLM)**
-*   **Provider**: **Azure OpenAI**
-*   **Model**: `gpt-4o` (via `gpt-audio-AI-Assessment` deployment)
-*   **Role**:
-    *   **Phase 1 (Setup)**: Analyzes CV to generate topics.
-    *   **Phase 2 (Theory)**: Generates the next question and conversationally responds to the candidate.
-    *   **Phase 3 (Coding)**: Evaluates the Python code submitted by the user.
+### 2. ⏱️ Robust Interview Timer
+*   **Persistent Iframe**: A custom-built timer that won't reset or disappear during UI updates.
+*   **Visual Cues**:
+    *   **13 Minutes**: Turns **RED** with a "WRAP UP" warning.
+    *   **15 Minutes**: Turns **RED** with "TIME UP".
+    *   **Finished**: Turns **GREEN** when the interview ends.
 
-### **2. Speech-to-Text (Transcriber)**
-*   **Provider**: **Deepgram**
-*   **Model**: `nova-2`
-*   **Role**: real-time transcription of the user's voice answers.
+### 3. 🛑 Smart Termination
+The AI listens for "Closing Statements". If the interview naturally concludes (e.g., "Thank you, goodbye") after the final question, the system **automatically stops**, freezes the timer, and generates a score. No need to wait for the clock to run out.
 
-### **3. Text-to-Speech (TTS)**
-*   **Provider**: **Deepgram**
-*   **Model**: `aura-asteria-en`
-*   **Role**: Generates the audio for the AI interviewer's voice.
-
-### **4. UI Framework**
-*   **Library**: **Streamlit**
-*   **Role**: Provides the web interface, audio recorder widget, and coding text editor.
+### 4. 🗣️ Voice-First Interaction
+*   **Listening**: Uses **Deepgram Nova-2** for lightning-fast transcription.
+*   **Speaking**: Uses **Deepgram Aura** for human-like, low-latency voice output.
 
 ---
 
-## 🚀 Deployment Instructions
+## 🛠️ System Architecture (Refactored)
 
-### 1. GitHub Setup
-Push **only** the files listed above. The `.gitignore` file included in this repo will automatically prevent you from pushing unnecessary files like `__pycache__`, `*.wav`, or your secret `.env` file. Ensure `packages.txt` is also pushed if you added system dependencies (it can be empty).
+The project is organized into a clean, modular structure:
 
-### 2. Streamlit Cloud Deployment
-1.  Push this repository to GitHub.
-2.  Go to [share.streamlit.io](https://share.streamlit.io/).
-3.  Connect your GitHub account and select this repository.
-4.  Set the **Main file path** to `main_app.py`.
-5.  **Crucial**: In "Advanced Settings" -> "Secrets", add your API keys:
-    ```toml
-    AZURE_OPENAI_API_KEY = "your_azure_key"
-    AZURE_OPENAI_ENDPOINT = "https://expertbridge-foundry.openai.azure.com/"
-    AZURE_OPENAI_DEPLOYMENT_NAME = "gpt-audio-AI-Assessment"
-    DEEPGRAM_API_KEY = "your_deepgram_key"
-    ```
-6.  Click **Deploy**.
-
----
-
-## 💻 Local Execution
-To run locally:
-1.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-2.  **Setup Keys**:
-    Create a `.env` file with:
-    ```env
-    AZURE_OPENAI_API_KEY=your_key
-    AZURE_OPENAI_ENDPOINT=https://expertbridge-foundry.openai.azure.com/
-    AZURE_OPENAI_DEPLOYMENT_NAME=gpt-audio-AI-Assessment
-    DEEPGRAM_API_KEY=your_deepgram_key
-    ```
-3.  **Run App**:
-    ```bash
-    streamlit run main_app.py
-    ```
+```
+AI_REBUILD/
+├── src/
+│   ├── core/
+│   │   ├── orchestrator.py  # The "Manager" - coordinates I/O and logic
+│   │   ├── brain.py        # The "Mind" - Prompt engineering & decision making
+│   │   ├── listener.py     # Speech-to-Text (Deepgram)
+│   │   └── speaker.py      # Text-to-Speech (Deepgram HTTP)
+│   ├── ingestion/          # CV Parsing & Initial Q Generation
+│   └── utils/
+│       ├── timer.py        # Robust Iframe Timer Component
+│       └── question_strategy.py # Dynamic strategy builder
+├── documentation/          # Guides, Logs, and System Prompt Info
+├── testing/                # Unit tests and debug scripts
+├── output/                 # Extracted Job Descriptions (JSON)
+├── main_app.py             # Streamlit Entry Point (UI)
+└── .env                    # API Keys (Not committed)
+```
 
 ---
 
-## 🧠 System Prompts & Logic
+## 🚀 Setup & Usage
 
-### **Interviewer Persona (`INTERVIEWER_SYSTEM_PROMPT`)**
-The AI is instructed to:
-1.  Be professional but encouraging.
-2.  Ask **ONE** question at a time.
-3.  **NEVER** autocomplete or hallucinate the user's response.
-4.  Switch to `[CODING]` mode when instructed.
+### 1. Prerequisites
+*   Python 3.9+
+*   **API Keys**:
+    *   Azure OpenAI (for Intelligence) - OR - Standard OpenAI
+    *   Deepgram (for Voice)
 
-### **Phasewise Logic**
-1.  **Theory Phase**:
-    *   The `Orchestrator` counts every question asked.
-    *   After **5 questions**, it injects a "System Message" telling the brain: *"THEORY Phase complete. Switch to CODING phase now."*
-2.  **Coding Phase**:
-    *   The AI asks a coding problem.
-    *   The User switches to the "Coding Challenge" tab.
-    *   The User writes code and clicks "Submit".
-    *   The `submit_code` function sends the code to **Azure OpenAI** for evaluation (Pass/Fail + Feedback).
-    *   After **2 questions**, the interview concludes.
+### 2. Installation
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configuration (.env)
+Create a `.env` file in the root directory:
+```env
+# Intelligence
+AZURE_OPENAI_API_KEY="your_key"
+AZURE_OPENAI_ENDPOINT="your_endpoint"
+AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
+
+# Voice
+DEEPGRAM_API_KEY="your_deepgram_key"
+```
+
+### 4. Running the App
+```bash
+streamlit run main_app.py
+```
+
+---
+
+## 🎮 How to Use
+
+1.  **Select Job Role**: usage the Sidebar dropdown to pick a Job Context (e.g., "Senior Python Dev").
+2.  **Fill Profile**: Enter your name/experience in the main form and click "Save".
+3.  **Upload CV**: Upload your PDF resume in the sidebar.
+4.  **Start**: Click "Start Interview".
+5.  **Speak**: The AI will greet you. Reply verbally.
+6.  **Finish**: The interview ends automatically after ~15 mins or when you say goodbye after the final question.
+
+---
+
+## 🧪 Testing & Verification
+
+*   Run `python testing/test_context_injection.py` to verify the RAG prompt injection.
+*   Run `python testing/verification_rebuild.py` for a full backend simulation.
+
+---
+
+**Built with Streamlit, Azure OpenAI, and Deepgram.**
