@@ -163,49 +163,15 @@ def main():
             if "start_time" not in st.session_state:
                 st.session_state.start_time = time.time()
                 
-            start_timestamp = st.session_state.start_time
-            
-            # Container for the timer with unique ID logic
-            timer_html = f"""
-                <div id="timer_container" style="padding: 10px; border-radius: 5px; background-color: #f0f2f6; margin-bottom: 10px;">
-                    <h3 style="margin:0; color: #333;">⏱️ Time Elapsed</h3>
-                    <div id="live_timer" style="font-size: 24px; font-weight: bold; color: #000;">Loading...</div>
-                </div>
-                <script>
-                (function() {{
-                    const startTime = {start_timestamp};
-                    
-                    function updateTimer() {{
-                        const now = Date.now() / 1000;
-                        const elapsed = now - startTime;
-                        
-                        if (elapsed < 0) return;
-                        
-                        const minutes = Math.floor(elapsed / 60);
-                        const seconds = Math.floor(elapsed % 60);
-                        
-                        const timerDiv = document.getElementById("live_timer");
-                        if (timerDiv) {{
-                            timerDiv.innerHTML = `${{minutes}}m ${{seconds}}s`;
-                        }}
-                        
-                        // Visual cue for 13 min warning
-                        if (elapsed > 780) {{
-                             timerDiv.style.color = "red";
-                             timerDiv.innerHTML += " <br><span style='font-size:12px'>(Wrap Up!)</span>";
-                        }}
-                    }}
-                    
-                    // Clear any existing intervals to prevent dupes
-                    if (window.timerInterval) clearInterval(window.timerInterval);
-                    
-                    // Update immediately and then every second
-                    updateTimer();
-                    window.timerInterval = setInterval(updateTimer, 1000);
-                }})();
-                </script>
-            """
-            st.sidebar.markdown(timer_html, unsafe_allow_html=True)
+            # Use the robust iframe timer from utils
+            try:
+                from src.utils.timer import display_timer
+                st.sidebar.markdown("---")
+                with st.sidebar:
+                    display_timer(st.session_state.start_time)
+            except ImportError:
+                st.sidebar.error("Timer Module Missing")
+
             
             st.markdown("---")
             if st.button("🔄 Reset Interview", type="primary"):
