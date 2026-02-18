@@ -131,6 +131,7 @@ def main():
         uploaded_file = st.file_uploader("Upload PDF CV", type=["pdf"])
         
         if uploaded_file and not st.session_state.interview_active:
+            # Start Interview Button Logic
             if st.button("Start Interview"):
                 if not st.session_state.expert_profile:
                     st.error("⚠️ Please fill out and SAVE the Candidate Profile in the main window first!")
@@ -154,8 +155,10 @@ def main():
                     import time
                     st.session_state.start_time = time.time()
                     st.success("Interview Started! Please introduce yourself.")
-        
-            # Feature 9: Live Timer (JavaScript) - Robust Version
+                    st.rerun()
+
+        # Feature 9: Live Timer (JavaScript) - Robust Version (Now outside the 'not active' block)
+        if st.session_state.interview_active:
             import time
             if "start_time" not in st.session_state:
                 st.session_state.start_time = time.time()
@@ -184,6 +187,12 @@ def main():
                         const timerDiv = document.getElementById("live_timer");
                         if (timerDiv) {{
                             timerDiv.innerHTML = `${{minutes}}m ${{seconds}}s`;
+                        }}
+                        
+                        // Visual cue for 13 min warning
+                        if (elapsed > 780) {{
+                             timerDiv.style.color = "red";
+                             timerDiv.innerHTML += " <br><span style='font-size:12px'>(Wrap Up!)</span>";
                         }}
                     }}
                     
