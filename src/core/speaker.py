@@ -19,38 +19,35 @@ class Speaker:
 
     def text_to_speech(self, text, output_file="output_tts.mp3", voice_model="aura-asteria-en", language="en"):
         """
-        Converts text to speech using Deepgram Aura.
-        Returns the AUDIO BYTES (not filename).
+        Converts text to speech using Deepgram Aura via RAW HTTP (No SDK).
+        Returns the AUDIO BYTES.
         """
         try:
             # Feature 5: Auto-select voice based on language
             final_model = voice_model
             
-            # Use a temporary filename to avoid conflicts
-            import uuid
-            temp_filename = f"temp_tts_{uuid.uuid4()}.mp3"
+            # Raw HTTP Request to Deepgram (Bypassing SDK constraints)
+            import requests
             
-            # Simple Dict for Options (Avoids import issues with SpeakOptions)
-            options = {"model": final_model}
+            url = f"https://api.deepgram.com/v1/speak?model={final_model}"
             
-            # Generate audio to file
-            # Revert: .rest accessor is not available in this SDK version. 
-            # We rely on the dict 'options' fix to resolve the original issue.
-            self.deepgram.speak.v("1").save(temp_filename, {"text": text}, options)
+            headers = {
+                "Authorization": f"Token {self.api_key}",
+                "Content-Type": "application/json"
+            }
             
-            # Read bytes and cleanup
-            if os.path.exists(temp_filename):
-                with open(temp_filename, "rb") as f:
-                    audio_bytes = f.read()
-                try:
-                    os.remove(temp_filename)
-                except:
-                    pass
+            payload = {"text": text}
+            
+            # Streaming response (but we read all bytes)
+            response = requests.post(url, headers=headers, json=payload, stream=True)
+            
+            if response.status_code == 200:
+                audio_bytes = response.content
                 return audio_bytes
             else:
-                print("[Speaker] Error: File was not created by Deepgram.")
+                print(f"[Speaker] HTTP Error: {response.status_code} - {response.text}")
                 return None
 
         except Exception as e:
-            print(f"[Speaker] TTS Error: {e}")
+            print(f"[Speaker] TTS Error (HTTP): {e}")
             return None

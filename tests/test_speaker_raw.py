@@ -19,22 +19,26 @@ def test_speak_raw():
         
         print(f"Generating audio for: '{text}' using '{model}'...")
         
-        filename = "test_output.mp3"
+        url = f"https://api.deepgram.com/v1/speak?model={model}"
+        headers = {
+            "Authorization": f"Token {api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {"text": text}
         
-        # Proper SDK usage with Dict
-        options = {"model": model}
+        import requests
+        response = requests.post(url, headers=headers, json=payload)
         
-        # Calling the API
-        # Revert: .rest accessor is not available. Using .v("1") with dict options.
-        response = deepgram.speak.v("1").save(filename, {"text": text}, options)
+        print(f"HTTP Status: {response.status_code}")
         
-        print(f"Result: {response}")
-        
-        if os.path.exists(filename):
+        if response.status_code == 200:
+            filename = "test_output.mp3"
+            with open(filename, "wb") as f:
+                f.write(response.content)
             print(f"SUCCESS: File created at {filename}")
-            print(f"Size: {os.path.getsize(filename)} bytes")
+            print(f"Size: {len(response.content)} bytes")
         else:
-            print("FAILURE: File not found.")
+            print(f"FAILURE: {response.text}")
             
     except Exception as e:
         print(f"Exception: {e}")
