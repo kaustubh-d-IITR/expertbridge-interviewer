@@ -34,8 +34,9 @@ class Speaker:
             options = {"model": final_model}
             
             # Generate audio to file
-            # Fix: Explicitly use .rest.v("1") to avoid attribute errors
-            self.deepgram.speak.rest.v("1").save(temp_filename, {"text": text}, options)
+            # Revert: .rest accessor is not available in this SDK version. 
+            # We rely on the dict 'options' fix to resolve the original issue.
+            self.deepgram.speak.v("1").save(temp_filename, {"text": text}, options)
             
             # Read bytes and cleanup
             if os.path.exists(temp_filename):

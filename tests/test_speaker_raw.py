@@ -25,6 +25,7 @@ def test_speak_raw():
         options = {"model": model}
         
         # Calling the API
+        # Revert: .rest accessor is not available. Using .v("1") with dict options.
         response = deepgram.speak.v("1").save(filename, {"text": text}, options)
         
         print(f"Result: {response}")
