@@ -81,7 +81,9 @@ class Orchestrator:
                 voice = settings["voice_model"]
             ai_audio = self.speaker.text_to_speech(ai_text, voice_model=voice)
         except Exception as e:
-            print(f"[Orchestrator] Speaker error: {e}")
+            msg = f"[Orchestrator] Speaker error: {e}"
+            print(msg)
+            self.last_error = msg # Show in UI logs
         
         self.transcript.append({"role": "user", "text": user_text, "timestamp": elapsed_time})
         self.transcript.append({"role": "ai", "text": ai_text, "timestamp": elapsed_time})
