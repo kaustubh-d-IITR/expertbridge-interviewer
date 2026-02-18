@@ -40,10 +40,14 @@ class Orchestrator:
                 user_text = str(transcription_result)
             
             if not user_text:
-                return None, "I didn't catch that. Could you repeat?", None, False
+                fallback_text = "I didn't catch that. Could you repeat?"
+                fallback_audio = self.speaker.text_to_speech(fallback_text)
+                return user_text, fallback_text, fallback_audio, False
         except Exception as e:
             print(f"[Orchestrator] Transcription error: {e}")
-            return None, "I'm having trouble hearing you. Please try again.", None, False
+            fallback_text = "I'm having trouble hearing you. Please try again."
+            fallback_audio = self.speaker.text_to_speech(fallback_text)
+            return None, fallback_text, fallback_audio, False
         
         try:
             brain_result = self.brain.handle_user_input(user_text, elapsed_time)
