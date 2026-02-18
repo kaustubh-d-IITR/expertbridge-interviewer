@@ -34,7 +34,8 @@ class Speaker:
             options = {"model": final_model}
             
             # Generate audio to file
-            self.deepgram.speak.v("1").save(temp_filename, {"text": text}, options)
+            # Explicitly use .rest.v("1") to avoid attribute errors in some envs
+            self.deepgram.speak.rest.v("1").save(temp_filename, {"text": text}, options)
             
             # Read bytes and cleanup
             if os.path.exists(temp_filename):
