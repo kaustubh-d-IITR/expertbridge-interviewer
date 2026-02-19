@@ -31,19 +31,26 @@ class ComprehensiveAnalyzer:
             full_text += f"{role.upper()}: {text}\n"
 
         prompt = f"""
-        You are a hiring committee. Review this technical interview transcript.
+        You are a Senior Technical Hiring Committee using the CRUCIBLE PROTOCOL.
+        Review this technical interview transcript to determine if the candidate is a High-Signal Expert.
         
         CANDIDATE: {expert_profile.get('name', 'Candidate')}
         ROLE: {expert_profile.get('current_role', 'Expert')}
+        
+        EVALUATION FRAMEWORK:
+        1. **Credibility of Experience**: Do they cite specific metrics, tools, and real-world constraints?
+        2. **Decision Maturity**: Do they explain *why* they made choices (trade-offs), not just *what* they used?
+        3. **Confidence Calibration**: Are they honest about what they don't know?
+        4. **Evidence Extraction**: Identify the strongest "war stories" or proof points.
         
         TRANSCRIPT:
         {full_text[:15000]}
         
         Return JSON:
         {{
-            "summary": "...",
-            "strengths": ["...", "...", "..."],
-            "weaknesses": ["...", "...", "..."],
+            "summary": "Detailed assessment of the candidate's expertise level and signal density.",
+            "strengths": ["Extract specific high-signal evidence points..."],
+            "weaknesses": ["Identify signals of low expertise or behavioral red flags..."],
             "rating": "Strong Hire/Hire/No Hire"
         }}
         """
