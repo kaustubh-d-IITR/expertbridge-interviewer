@@ -40,7 +40,7 @@ class Listener:
             
             response = self.deepgram.listen.v1.media.transcribe_file(
                 request=buffer_data,
-                model="nova-2",
+                model="nova-3-general",
                 smart_format=True,
                 utterances=True,
                 punctuate=True,
