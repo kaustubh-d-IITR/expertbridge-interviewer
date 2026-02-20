@@ -264,6 +264,22 @@ class Brain:
              return "Thank you for your time today. This concludes our interview. We will be in touch soon. Goodbye!"
 
     
+    def _get_dynamic_topic_instruction(self) -> str:
+        """
+        Forces the LLM to follow the required topic progression based on the exact turn number.
+        """
+        instructions = {
+            0: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT ROLE / AIM). Ask Question 1 (Overview). Start with a brief neutral/positive reaction to their opening (if any), then ask exactly ONE question about the high-level aim and their specific role in their main project. DO NOT ask multi-part questions.",
+            1: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT ROLE / AIM). Ask Question 2 (Deep Dive). First, react appropriately to their answer (praise if good, neutral if vague/don't know). Then, ask ONE deep dive question about technical specifics, architecture, or trade-offs for this SAME project.",
+            2: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 2 (PROFILE/RESUME EXPERIENCE 1). React to their last answer. Then, ask Question 1 (Overview) about A COMPLETELY DIFFERENT skill, role, or experience from their background/resume. DO NOT mention the previous project.",
+            3: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 2 (PROFILE/RESUME EXPERIENCE 1). Ask Question 2 (Technical Dive). React appropriately, then ask ONE technical follow-up or challenge about the specific topic you just introduced.",
+            4: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 3 (PROFILE/RESUME EXPERIENCE 2). React to their last answer. Then, ask Question 1 (Overview) about YET ANOTHER COMPLETELY DIFFERENT experience or project from their resume. DO NOT revert to any previous projects discussed.",
+            5: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 3 (PROFILE/RESUME EXPERIENCE 2). Ask Question 2 (Trade-offs/Challenges). React appropriately, then ask ONE question about specific challenges or trade-offs regarding this third topic.",
+            6: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 4 (CULTURE & VALUES). React to their answer. Then, ask Question 1 (Scenario). Ask ONE behavioral or scenario-based question about ethics, team conflict, or work culture.",
+            7: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 4 (CULTURE & VALUES). Ask Question 2 (Reflection). React appropriately, then ask ONE reflective question about what they learned from that scenario or how it shapes their work today."
+        }
+        return instructions.get(self.question_count, "[CRITICAL INSTRUCTION] Keep it brief, ask one final specific question.")
+
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
         messages = []
         messages.append({"role": "system", "content": self._get_static_system_prompt()})
@@ -282,6 +298,12 @@ class Brain:
             messages.append({"role": "system", "content": "[TIME CHECK] You have 5 minutes left. Start moving toward conclusion."})
             
         messages.extend(self.conversation_history)
+        
+        # FEATURE: Dynamic State Injection (Forces LLM to not get stuck)
+        dynamic_cmd = self._get_dynamic_topic_instruction()
+        if dynamic_cmd:
+            messages.append({"role": "system", "content": dynamic_cmd})
+            
         messages.append({"role": "user", "content": user_input})
         return messages
     
