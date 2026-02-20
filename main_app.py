@@ -53,6 +53,8 @@ def main():
         st.session_state.candidate_name = "Candidate"
     if "coding_mode" not in st.session_state:
         st.session_state.coding_mode = False
+    if "instructions_acknowledged" not in st.session_state:
+        st.session_state.instructions_acknowledged = False
     if "debug_logs" not in st.session_state:
         st.session_state.debug_logs = "" # Phase 34: Ensure Debug Logs exist
 
@@ -133,7 +135,9 @@ def main():
         if uploaded_file and not st.session_state.interview_active:
             # Start Interview Button Logic
             if st.button("Start Interview"):
-                if not st.session_state.expert_profile:
+                if not st.session_state.instructions_acknowledged:
+                    st.error("⚠️ Please read and acknowledge the guidelines before starting!")
+                elif not st.session_state.expert_profile:
                     st.error("⚠️ Please fill out and SAVE the Candidate Profile in the main window first!")
                 else:
                     with st.spinner("Initializing AI Interviewer..."):
@@ -206,12 +210,59 @@ def main():
                 st.session_state.chat_history = []
                 st.session_state.interview_active = False
                 st.session_state.cv_text = ""
+                st.session_state.instructions_acknowledged = False # Reset instructions acknowledgment
                 # Re-init orchestrator logic
                 st.session_state.orchestrator_v3 = Orchestrator()
                 st.rerun()
 
     # Main Area
-    if st.session_state.interview_active:
+    if not st.session_state.instructions_acknowledged:
+        # Feature 35: Instruction & Disclaimer Gateway Page
+        st.title("🎯 Welcome to ExpertBridge AI Interviewer")
+        st.markdown("---")
+        
+        st.subheader("📋 Interview Format & Rules")
+        st.markdown("""
+        **Format:**
+        - This is a highly structured, rigorous **15-minute** interview.
+        - The AI will assess you across **4 distinct topics** based on your Profile and Resume.
+        - You will be asked **exactly 2 questions per topic**: an Overview and a Deep Dive.
+        - **Speak clearly and concisely**. The AI values "Information Density" (metrics, specific tools, trade-offs).
+        """)
+        
+        st.subheader("🚨 Termination Conditions (WARNING)")
+        st.markdown("""
+        The interview will automatically end and record a **Zero (0) Score** if you violate these rules:
+        1. **Abusive Language:** Cursing or inappropriate language will result in an immediate strike and termination.
+        2. **Time Expiration:** The system enforces a strict 15:00-minute hard stop.
+        3. **Refusal to Answer:** Repeatedly giving empty/silent recordings or refusing to discuss a topic.
+        """)
+        
+        # Attractive Evaluation Metrics
+        st.subheader("📊 Evaluation Metrics")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.info("**🧠 Technical Depth**\n\nYour ability to explain complex concepts, "
+                    "system architectures, and technical trade-offs with concrete examples and metrics.", icon="⚙️")
+        with col2:
+            st.warning("**💭 Structured Thinking**\n\nHow logically you lay out your arguments, "
+                       "manage constraints, and frame solutions to unstructured problems.", icon="🧩")
+        with col3:
+            st.success("**🤝 Cultural Fit & Comm**\n\nYour clarity, professionalism, "
+                       "conciseness, and self-awareness (ability to admit mistakes).", icon="🗣️")
+                       
+        st.markdown("---")
+        st.markdown("### How to Start:")
+        st.markdown("1. Click the button below to acknowledge these rules.\n"
+                    "2. Fill out your **Candidate Profile** in the next screen.\n"
+                    "3. Select a Job Description and **Upload your PDF Resume** in the sidebar.\n"
+                    "4. Click **Start Interview**.")
+        
+        if st.button("✅ I Understand. Proceed to Setup.", type="primary", use_container_width=True):
+            st.session_state.instructions_acknowledged = True
+            st.rerun()
+
+    elif st.session_state.interview_active:
         
         # Display Chat History
         for sender, message, _ in st.session_state.chat_history:
