@@ -81,6 +81,13 @@ def display_timer(start_time_epoch, stop=False):
                     return;
                 }}
 
+                // 15 Minute Limit - Visual Hard Stop
+                if (elapsed >= 900) {{
+                    elapsed = 900; // Clamp
+                    document.getElementById("msg").innerText = "🛑 TIME UP (Processing...)";
+                    document.getElementById("display").style.color = "#d93025";
+                }}
+                
                 const m = Math.floor(elapsed / 60);
                 const s = elapsed % 60;
 
@@ -88,14 +95,9 @@ def display_timer(start_time_epoch, stop=False):
                 display.innerText = `${{m}}m ${{s}}s`;
 
                 // 13 Minute Warning
-                if (elapsed >= 780 && !stopTimer) {{
+                if (elapsed >= 780 && elapsed < 900 && !stopTimer) {{
                     display.classList.add("warning");
                     document.getElementById("msg").innerText = "⚠️ WRAP UP SOON";
-                }}
-                
-                // 15 Minute Limit
-                if (elapsed >= 900) {{
-                    document.getElementById("msg").innerText = "🛑 TIME UP";
                 }}
             }}
 

@@ -166,8 +166,8 @@ def main():
             # Feature: Auto-Refresh for Timer & Termination (Fix for "Timer Keeps Going")
             try:
                 from streamlit_autorefresh import st_autorefresh
-                # Refresh every 5 seconds to check for termination (Passively)
-                st_autorefresh(interval=5000, limit=None, key="interview_timer")
+                # Refresh every 1 second to check for termination (Passively)
+                st_autorefresh(interval=1000, limit=None, key="interview_timer")
             except ImportError:
                 # Fallback if package not installed
                 pass
