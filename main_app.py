@@ -167,16 +167,29 @@ def main():
             stop_timer = False
             if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
                 stop_timer = True
+                
+            # Feature 12: Passive Timeout Check
+            elapsed = time.time() - st.session_state.start_time
+            if elapsed >= 900 and not stop_timer: # Exactly 15 mins
+                 st.warning("⏳ Time Limit Reached! Wrapping up...")
+                 if hasattr(st.session_state.orchestrator_v3, "phase"):
+                     st.session_state.orchestrator_v3.phase = "TERMINATED"
+                     stop_timer = True # Force stop immediately for this run
+                     # Force Score Calculation if missing
+                     if st.session_state.orchestrator_v3.scores and getattr(st.session_state.orchestrator_v3, "final_score", 0) == 0:
+                         valid_scores = [s.get("overall_score", 0) for s in st.session_state.orchestrator_v3.scores if isinstance(s, dict)]
+                         if valid_scores:
+                             st.session_state.orchestrator_v3.final_score = int(sum(valid_scores) / len(valid_scores))
+                 st.rerun() # Force immediate rerun to show score
             
-            # Feature: Auto-Refresh for Timer & Termination (Fix for "Timer Keeps Going")
+            # Feature: Auto-Refresh for Timer & Termination
             try:
                 from streamlit_autorefresh import st_autorefresh
                 # Refresh every 1 second to check for termination (Passively)
-                # Only run if not terminated to avoid infinite reruns causing blank screens
+                # Only run if not terminated
                 if not stop_timer:
                     st_autorefresh(interval=1000, limit=None, key="interview_timer")
             except ImportError:
-                # Fallback if package not installed
                 pass
                 
             # Use the robust iframe timer from utils
@@ -188,20 +201,6 @@ def main():
                     display_timer(st.session_state.start_time, stop=stop_timer)
             except ImportError:
                 st.sidebar.error("Timer Module Missing")
-            
-            # Feature 12: Passive Timeout Check (Triggers via Auto-Refresh)
-            elapsed = time.time() - st.session_state.start_time
-            if elapsed >= 900 and not stop_timer: # Exactly 15 mins
-                 st.warning("⏳ Time Limit Reached! Wrapping up...")
-                 if hasattr(st.session_state.orchestrator_v3, "phase"):
-                     st.session_state.orchestrator_v3.phase = "TERMINATED"
-                     # Force Score Calculation if missing
-                     if st.session_state.orchestrator_v3.scores and st.session_state.orchestrator_v3.final_score == 0:
-                         valid_scores = [s.get("overall_score", 0) for s in st.session_state.orchestrator_v3.scores if isinstance(s, dict)]
-                         if valid_scores:
-                             st.session_state.orchestrator_v3.final_score = int(sum(valid_scores) / len(valid_scores))
-                 st.rerun()
-
             
             st.markdown("---")
             if st.button("🔄 Reset Interview", type="primary"):
