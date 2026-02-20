@@ -77,13 +77,36 @@ class Brain:
                     "terminate": True, "warning_issued": False, "phase": "TERMINATED"
                 }
         
+        # 1. TIME LIMIT CHECK (Hard Stop at 15 mins)
         if elapsed_time > 890: 
             return {
                 "spoken_response": "We've reached our time limit. Thank you for your time today. You'll hear back from us soon.",
                 "analysis": {"overall_score": 0, "note": "Interview completed on time", "depth_score": 3, "thinking_score": 3, "fit_score": 3},
                 "terminate": True, "warning_issued": False, "phase": "TERMINATED"
             }
+
+        # 2. NATURAL CONCLUSION CHECK (Answered Final Question)
+        # We ask 8 questions (4 topics x 2). If count is 8, user just answered the final one.
+        if self.question_count >= 8:
+            print("[Brain] Final Question Answered (Count >= 8). Terminating.")
+            
+            # Generate a closing statement instead of a new question
+            closing_message = self.generate_closing_message(user_input)
+            
+            try:
+                analysis = self.analyze_answer(user_input)
+            except Exception:
+                analysis = self._get_empty_analysis()
+
+            return {
+                "spoken_response": closing_message,
+                "analysis": analysis,
+                "terminate": True, 
+                "warning_issued": False,
+                "phase": "TERMINATED"
+            }
         
+        # 3. STANDARD TURN GENERATION
         spoken_response = self.generate_spoken_response(user_input, elapsed_time)
         
         try:
@@ -91,15 +114,16 @@ class Brain:
         except Exception:
             analysis = self._get_empty_analysis()
 
+        # Update Phase for UI
         if self.question_count == 1:
             self.interview_phase = "OPENING"
-        elif self.question_count < 5:
+        elif self.question_count < 8:
             self.interview_phase = "QUESTIONS"
         else:
             self.interview_phase = "CLOSING"
             
-        # Feature: Early Termination Detection (User Request)
-        # If AI says "Thank you" and "Goodbye" after 10 mins, terminate.
+        # Feature: Early Termination Detection (User Request during interview)
+        # If AI says "Thank you" and "Goodbye" naturally before limit, terminate.
         if elapsed_time > 600 and ("thank you" in spoken_response.lower() or "goodbye" in spoken_response.lower() or "hear back" in spoken_response.lower()):
              print("[Brain] Detected Closing Statement. Terminating Interview.")
              return {
@@ -220,6 +244,25 @@ class Brain:
             print(f"[Brain Error] Failed to generate response: {error_msg}")
             self.last_error = str(e) # Store for UI
             return "I apologize, I'm having a technical issue. Could you please repeat that?"
+
+    def generate_closing_message(self, user_input: str) -> str:
+        """
+        Generates a final polite closing statement (no question).
+        """
+        try:
+             prompt = f"The candidate just said: '{user_input}'. The interview is over. Generate a brief, professional closing statement (Thank them, say goodbye). Do NOT ask a question."
+             
+             model_to_use = "gpt-4o-mini" # Fast
+             response = self.client.chat.completions.create(
+                 model=model_to_use,
+                 messages=[{"role": "system", "content": "You are a polite interviewer ending the call."}, {"role": "user", "content": prompt}],
+                 temperature=0.7,
+                 max_tokens=60
+             )
+             return response.choices[0].message.content.strip()
+        except:
+             return "Thank you for your time today. This concludes our interview. We will be in touch soon. Goodbye!"
+
     
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
         messages = []
