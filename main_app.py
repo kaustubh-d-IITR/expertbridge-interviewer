@@ -162,12 +162,19 @@ def main():
             import time
             if "start_time" not in st.session_state:
                 st.session_state.start_time = time.time()
+                
+            # Check for termination to freeze timer
+            stop_timer = False
+            if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
+                stop_timer = True
             
             # Feature: Auto-Refresh for Timer & Termination (Fix for "Timer Keeps Going")
             try:
                 from streamlit_autorefresh import st_autorefresh
                 # Refresh every 1 second to check for termination (Passively)
-                st_autorefresh(interval=1000, limit=None, key="interview_timer")
+                # Only run if not terminated to avoid infinite reruns causing blank screens
+                if not stop_timer:
+                    st_autorefresh(interval=1000, limit=None, key="interview_timer")
             except ImportError:
                 # Fallback if package not installed
                 pass
@@ -175,11 +182,6 @@ def main():
             # Use the robust iframe timer from utils
             try:
                 from src.utils.timer import display_timer
-                
-                # Check for termination to freeze timer
-                stop_timer = False
-                if hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase == "TERMINATED":
-                    stop_timer = True
                 
                 st.sidebar.markdown("---")
                 with st.sidebar:
@@ -189,14 +191,15 @@ def main():
             
             # Feature 12: Passive Timeout Check (Triggers via Auto-Refresh)
             elapsed = time.time() - st.session_state.start_time
-            if elapsed > 905 and not stop_timer: # 15 mins + buffer
+            if elapsed >= 900 and not stop_timer: # Exactly 15 mins
                  st.warning("⏳ Time Limit Reached! Wrapping up...")
                  if hasattr(st.session_state.orchestrator_v3, "phase"):
                      st.session_state.orchestrator_v3.phase = "TERMINATED"
                      # Force Score Calculation if missing
                      if st.session_state.orchestrator_v3.scores and st.session_state.orchestrator_v3.final_score == 0:
-                         total = sum([s.get("overall_score", 0) for s in st.session_state.orchestrator_v3.scores])
-                         st.session_state.orchestrator_v3.final_score = int(total / len(st.session_state.orchestrator_v3.scores))
+                         valid_scores = [s.get("overall_score", 0) for s in st.session_state.orchestrator_v3.scores if isinstance(s, dict)]
+                         if valid_scores:
+                             st.session_state.orchestrator_v3.final_score = int(sum(valid_scores) / len(valid_scores))
                  st.rerun()
 
             
