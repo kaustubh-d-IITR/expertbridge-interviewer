@@ -42,30 +42,43 @@ Current Role: {role}
          strategy += f"\nKey Experience: {experience}\n"
     
     strategy += "\n--- PERSONALIZED QUESTION STRATEGY ---\n"
+    strategy += "RESUME COVERAGE PLANNER (INTERNAL USE ONLY):\n"
+    strategy += "1. Identify the top 3 most important experiences.\n"
+    strategy += "2. Identify earlier career signals.\n"
+    strategy += "3. Identify leadership and financial signals.\n"
+    strategy += "Distribute questions across these areas. Do NOT focus only on the latest role.\n\n"
     
-    if years >= 10:
+    if years >= 25:
         strategy += """
-→ SENIOR LEVEL (10+ years):
-  - Focus on LEADERSHIP: "Tell me about a time you had to align conflicting stakeholders."
-  - Focus on STRATEGY: "How do you decide between building internal tools vs buying?"
-  - Focus on MENTORSHIP: "How do you elevate standard engineers to senior levels?"
-  - ASSESS: Strategic thinking, business impact, organizational influence.
+→ EXECUTIVE/BOARD LEVEL (25+ years):
+  - Focus on LEGACY & TRANSFORMATION: Ask about industry evolution and multi-year organizational pivots.
+  - Focus on BOARD INFLUENCE: "How do you manage board-level expectations and CXO alignment during crisis?"
+  - Focus on MULTI-COMPANY PATTERNS: Ask them to compare architectural/leadership patterns across their past roles.
+  - ASSESS: Legacy building, executive influence, high-stakes negotiation, and long-term vision.
+"""
+    elif years >= 12:
+        strategy += """
+→ SENIOR EXECUTIVE LEVEL (12-24 years):
+  - Focus on LEADERSHIP SCALE: "How large was the team you led, how was it structured, and what leadership challenges did you face scaling it?"
+  - Focus on STRATEGY: "If you had to define the 3-year strategy for this function from scratch, what would be your priorities and why?"
+  - Focus on FINANCIAL OWNERSHIP: "What scale of budget or P&L responsibility did you directly influence, and what were the hardest financial trade-offs?"
+  - ASSESS: Organizational design, P&L responsibility, strategic forecasting, transformation.
 """
     elif years >= 5:
         strategy += """
-→ MID LEVEL (5-10 years):
-  - Focus on ARCHITECTURE: "Walk me through the system design of your last major project."
-  - Focus on TRADE-OFFS: "Why did you choose that specific tech stack over alternatives?"
-  - Focus on COLLABORATION: "How do you handle disagreements with product managers?"
-  - ASSESS: Technical depth, system design, ownership.
+→ MID-TO-SENIOR LEVEL (5-11 years):
+  - Focus on SYSTEM ARCHITECTURE: "Walk me through the system design of your last major project and its limitations."
+  - Focus on DECISION DEPTH: "Why did you choose that specific tech stack or process over the alternatives?"
+  - Focus on TEAM BUILDING: "How do you handle hiring, delegation, and disputes with cross-functional managers?"
+  - ASSESS: Depth of expertise, technical/operational trade-offs, ownership of features/teams.
 """
     else:
         strategy += """
-→ JUNIOR LEVEL (0-5 years):
-  - Focus on EXECUTION: "Describe a bug that was hard to track down."
-  - Focus on LEARNING: "What is a new technology you learned recently and how?"
-  - Focus on FUNDAMENTALS: "Explain a core concept in your primary language."
-  - ASSESS: Coding capability, debugging, curiosity.
+→ JUNIOR-TO-MID LEVEL (0-4 years):
+  - Focus on EXECUTION & DEPTH: "Describe a complex problem or bug that was hard to track down. Give metrics on the impact."
+  - Focus on LEARNING: "What is a recent steep learning curve you faced, and how did you conquer it?"
+  - Focus on RESILIENCE: "Tell me about an initiative that didn't go as planned and your specific role in the recovery."
+  - ASSESS: Core capability, hands-on execution, debugging capability, intellectual curiosity.
 """
     
     strategy += "\n→ SKILL-SPECIFIC PROBES (Select 1-2 relevant ones):\n"
