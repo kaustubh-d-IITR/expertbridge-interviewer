@@ -35,18 +35,27 @@ Current Role: {role}
     
     if project and isinstance(project, dict) and project.get("title"):
         strategy += f"\nKey Project: {project.get('title')} - {project.get('impact', '')}\n"
-    elif isinstance(project, str) and str(project).strip():
-         strategy += f"\nKey Project: {project}\n"
-         
     if experience and str(experience).strip():
          strategy += f"\nKey Experience: {experience}\n"
-    
+         
     strategy += "\n--- PERSONALIZED QUESTION STRATEGY ---\n"
     strategy += "RESUME COVERAGE PLANNER (INTERNAL USE ONLY):\n"
-    strategy += "1. Identify the top 3 most important experiences.\n"
-    strategy += "2. Identify earlier career signals.\n"
-    strategy += "3. Identify leadership and financial signals.\n"
-    strategy += "Distribute questions across these areas. Do NOT focus only on the latest role.\n\n"
+    strategy += "1. Identify all major projects or roles directly from the parsed resume text.\n"
+    strategy += "2. Rank them by importance: Recency, Impact, Leadership, and Financial signals.\n"
+    strategy += "3. Distribute questions across these areas. PRIMARY SOURCE must be the Resume. Profile input is SECONDARY.\n"
+    strategy += "4. Use the Key Project/Experience ONLY as the opening anchor topic.\n"
+    strategy += "5. ANTI-REPETITION GUARD: Check internally how many questions you have asked on the current topic. MAXIMUM QUESTIONS PER TOPIC = 2. If 2 is reached, you MUST force a transition to a new resume topic.\n\n"
+    
+    strategy += "REQUIRED INTERVIEW FLOW STRUCTURE (15-Minute Rule: Breadth over Depth after 2 questions):\n"
+    strategy += "STEP 1: Opening Topic (Start with Key Project/Experience above).\n"
+    strategy += "STEP 2: Resume Expansion (Move to other distinct projects extracted from their resume).\n"
+    strategy += "STEP 3: Leadership/Impact Validation (Ask at least one question strictly evaluating scale or decision-making).\n"
+    strategy += "STEP 4: Earlier Career Coverage (If multiple experiences, reference earlier chronological roles).\n"
+    
+    if job_context and len(job_context) > 20: 
+        strategy += "STEP 5: Reflection / Fit Question. You MUST end the interview by explicitly asking: 'Based on your experience across these projects, why do you believe you are a strong fit for this role?'\n\n"
+    else:
+        strategy += "STEP 5: Reflection Question. You MUST end the interview by asking: 'What leadership principle or painful lesson has most influenced how you make decisions today?'\n\n"
     
     if years >= 25:
         strategy += """
