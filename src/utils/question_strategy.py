@@ -17,6 +17,7 @@ def build_question_strategy(expert_profile):
     if isinstance(companies, str): companies = [c.strip() for c in companies.split(",")]
     
     project = expert_profile.get("key_project", {})
+    experience = expert_profile.get("key_experience", "")
     
     # Start building the strategy text
     strategy = f"""
@@ -34,8 +35,11 @@ Current Role: {role}
     
     if project and isinstance(project, dict) and project.get("title"):
         strategy += f"\nKey Project: {project.get('title')} - {project.get('impact', '')}\n"
-    elif isinstance(project, str) and project:
+    elif isinstance(project, str) and str(project).strip():
          strategy += f"\nKey Project: {project}\n"
+         
+    if experience and str(experience).strip():
+         strategy += f"\nKey Experience: {experience}\n"
     
     strategy += "\n--- PERSONALIZED QUESTION STRATEGY ---\n"
     

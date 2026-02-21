@@ -353,6 +353,9 @@ def main():
             project = st.text_area("Key Project (Briefly describe one major achievement)", 
                                    placeholder="Built a real-time payment engine handling 10k TPS...")
             
+            experience = st.text_area("Key Experience (Briefly describe your most significant professional experience)", 
+                                      placeholder="Led a cross-functional team of 15 engineers to rewrite the core monolithic billing service into microservices...")
+            
             if st.form_submit_button("💾 Save Profile"):
                 st.session_state.candidate_name = name
                 st.session_state.expert_profile = {
@@ -362,7 +365,8 @@ def main():
                     "top_skills": skills,
                     "industries": industries,
                     "past_companies": companies,
-                    "key_project": project
+                    "key_project": project,
+                    "key_experience": experience
                 }
                 st.success("✅ Profile Saved! You can now upload your CV in the sidebar and start.")
 

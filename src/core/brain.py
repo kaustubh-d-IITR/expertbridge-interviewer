@@ -269,9 +269,9 @@ class Brain:
         Forces the LLM to follow the required topic progression based on the exact turn number.
         """
         instructions = {
-            0: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT ROLE / AIM). Ask Question 1 (Overview). Start with a brief neutral/positive reaction to their opening (if any), then ask exactly ONE question about the high-level aim and their specific role in their main project. DO NOT ask multi-part questions.",
-            1: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT ROLE / AIM). Ask Question 2 (Deep Dive). First, react appropriately to their answer (praise if good, neutral if vague/don't know). Then, ask ONE deep dive question about technical specifics, architecture, or trade-offs for this SAME project.",
-            2: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 2 (PROFILE/RESUME EXPERIENCE 1). React to their last answer. Then, ask Question 1 (Overview) about A COMPLETELY DIFFERENT skill, role, or experience from their background/resume. DO NOT mention the previous project.",
+            0: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT / EXPERIENCE ROLE). Ask Question 1 (Overview). Start with a brief neutral/positive reaction to their opening (if any), then ask exactly ONE question about the high-level aim and their specific role in their main project or experience. DO NOT ask multi-part questions.",
+            1: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 1 (PROJECT / EXPERIENCE ROLE). Ask Question 2 (Deep Dive). First, react appropriately to their answer (praise if good, neutral if vague/don't know). Then, ask ONE deep dive question about technical specifics, architecture, or trade-offs for this SAME project or experience.",
+            2: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 2 (PROFILE/RESUME EXPERIENCE 1). React to their last answer. Then, ask Question 1 (Overview) about A COMPLETELY DIFFERENT skill, role, or experience from their background/resume. DO NOT mention the previous project/experience.",
             3: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 2 (PROFILE/RESUME EXPERIENCE 1). Ask Question 2 (Technical Dive). React appropriately, then ask ONE technical follow-up or challenge about the specific topic you just introduced.",
             4: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We MUST now MOVE ON to TOPIC 3 (PROFILE/RESUME EXPERIENCE 2). React to their last answer. Then, ask Question 1 (Overview) about YET ANOTHER COMPLETELY DIFFERENT experience or project from their resume. DO NOT revert to any previous projects discussed.",
             5: "[CRITICAL INSTRUCTION FOR NEXT QUESTION] We are on TOPIC 3 (PROFILE/RESUME EXPERIENCE 2). Ask Question 2 (Trade-offs/Challenges). React appropriately, then ask ONE question about specific challenges or trade-offs regarding this third topic.",
@@ -323,7 +323,7 @@ Once you have asked 2 questions for a topic, MOVE ON immediately to the next top
 NEVER repeat a question. NEVER revisit a previous topic. Once a topic is done, it is closed forever.
 
 TOPIC PROGRESSION (Ensure you cover their resume/profile fully):
-1. PROJECT ROLE / AIM: Key project aim and their specific role. (Q1: Overview, Q2: Deep Dive)
+1. PROJECT OR EXPERIENCE ROLE / AIM: Key project/experience aim and their specific role. (Q1: Overview, Q2: Deep Dive)
 2. PROFILE / RESUME EXPERIENCE 1: A specific major claim or skill from their background. (Q1: Overview, Q2: Technical Dive)
 3. PROFILE / RESUME EXPERIENCE 2: A different diverse experience or project from their background. (Q1: Overview, Q2: Trade-offs/Challenges)
 4. CULTURE & VALUES: Reflection on ethics, work culture, or lessons learned. (Q1: Scenario, Q2: Reflection)
@@ -430,8 +430,15 @@ Return ONLY valid JSON (Do NOT change keys):
         if not self.expert_profile:
             return "Hello! Thank you for joining this interview. Shall we begin?"
         name = self.expert_profile.get("name", "there")
+        experience = self.expert_profile.get("key_experience")
         project = self.expert_profile.get("key_project")
-        if project:
+        
+        if experience and str(experience).strip():
+            # If both are present, or only experience is present, focus on experience
+            return f"Hi {name}, thanks for joining! I saw your note about your key experience. Can you walk me through the details of that experience?"
+        elif project and str(project).strip():
+            # If only project is present
             title = project.get("title", str(project)) if isinstance(project, dict) else str(project)
-            return f"Hi {name}, thanks for joining! I saw you worked on {title}. Can you walk me through that experience?"
-        return f"Hi {name}, thanks for joining. Tell me about a recent project you're proud of."
+            return f"Hi {name}, thanks for joining! I saw you worked on {title}. Can you walk me through that project?"
+            
+        return f"Hi {name}, thanks for joining. Tell me about a recent project or experience you're proud of."
