@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.6 (Prompt Sync 23:20)
+# ExpertBridge AI Interviewer - v4.7 (Semantic Intelligence 23:25)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.6 (23:20)")
+    st.sidebar.caption("Deployment Version: v4.7 (23:25)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -37,8 +37,8 @@ def main():
         st.session_state.chat_history = []
     if "expert_profile" not in st.session_state:
         st.session_state.expert_profile = None
-    if "candidate_json" not in st.session_state:
-        st.session_state.candidate_json = None
+    if "candidate_profile" not in st.session_state:
+        st.session_state.candidate_profile = None
     if "interview_active" not in st.session_state:
         st.session_state.interview_active = False
     if "current_phase" not in st.session_state:
@@ -47,10 +47,10 @@ def main():
         try:
             st.session_state.orchestrator_v3 = Orchestrator()
             # Restore state if available
-            if st.session_state.expert_profile or st.session_state.candidate_json:
+            if st.session_state.expert_profile or st.session_state.candidate_profile:
                 st.session_state.orchestrator_v3 = Orchestrator(
                     expert_profile=st.session_state.expert_profile,
-                    candidate_json=st.session_state.candidate_json
+                    candidate_json=st.session_state.candidate_profile
                 )
         except ValueError as e:
             st.error(f"⚠️ Configuration Missing: {e}")
@@ -152,17 +152,17 @@ def main():
                     cv_text = parse_cv(uploaded_file)
                     st.session_state.cv_text = cv_text
                     
-                    # 2. AI Extraction (Zero-Touch)
+                    # 2. AI Extraction (Zero-Touch - Semantic Refactor v4.7)
                     # We pass the temporary orchestrator's brain to handle the extraction call
-                    candidate_json = extract_profile_to_json(cv_text, st.session_state.orchestrator_v3.brain)
-                    st.session_state.candidate_json = candidate_json
+                    candidate_profile = extract_profile_to_json(cv_text, st.session_state.orchestrator_v3.brain)
+                    st.session_state.candidate_profile = candidate_profile
                     
-                    # 3. Re-initialize Orchestrator with the new JSON
-                    st.session_state.orchestrator_v3 = Orchestrator(candidate_json=candidate_json)
+                    # 3. Re-initialize Orchestrator with the new Semantic Profile
+                    st.session_state.orchestrator_v3 = Orchestrator(candidate_json=candidate_profile)
                     
                     # 4. Start Interview
                     st.session_state.orchestrator_v3.start_interview(
-                        candidate_json.get("job_title", "Candidate"), 
+                        candidate_profile.get("full_name", "Candidate"), 
                         cv_text, 
                         st.session_state.get("current_job_context"),
                         mode=st.session_state.mode

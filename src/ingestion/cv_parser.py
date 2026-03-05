@@ -43,13 +43,17 @@ def extract_profile_to_json(resume_text, brain_instance):
         raw_json = response.choices[0].message.content.strip()
         # Ensure it's valid JSON
         profile_json = json.loads(raw_json)
-        print(f"[Parser] Successfully extracted profile for: {profile_json.get('job_title', 'Unknown')}")
+        print(f"[Parser] Successfully extracted profile for: {profile_json.get('full_name', 'Unknown')}")
         return profile_json
     except Exception as e:
         print(f"[ERROR] Profile extraction failed: {e}")
-        # Return a minimal placeholder on failure to avoid crashing the app
+        # Return a minimal placeholder on failure using the new schema
         return {
-            "job_title": "Candidate",
-            "industry_domain": "General",
-            "killer_requirements": ["Analysis failed. Relying on raw text."]
+            "full_name": "Candidate",
+            "current_role": "Expert",
+            "years_of_experience": "N/A",
+            "top_skills": [],
+            "industries": [],
+            "key_project": "Not Specified",
+            "key_experience": "Not Specified"
         }

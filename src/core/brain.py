@@ -293,8 +293,18 @@ class Brain:
         # Zero-Touch Version: Use the new strict prompt if candidate_json is available
         if self.candidate_json:
             from src.utils.prompts import ZERO_TOUCH_INTERVIEWER_PROMPT
-            json_str = json.dumps(self.candidate_json, indent=2)
-            messages.append({"role": "system", "content": ZERO_TOUCH_INTERVIEWER_PROMPT.format(candidate_json_string=json_str)})
+            # Format the prompt using specific keys from candidate_json
+            # Use .get() with "Not Specified" as fallback to avoid KeyError
+            formatted_prompt = ZERO_TOUCH_INTERVIEWER_PROMPT.format(
+                full_name=self.candidate_json.get("full_name", "Candidate"),
+                current_role=self.candidate_json.get("current_role", "Expert"),
+                years_of_experience=self.candidate_json.get("years_of_experience", "N/A"),
+                top_skills=", ".join(self.candidate_json.get("top_skills", [])) if isinstance(self.candidate_json.get("top_skills"), list) else self.candidate_json.get("top_skills", "Not Specified"),
+                industries=", ".join(self.candidate_json.get("industries", [])) if isinstance(self.candidate_json.get("industries"), list) else self.candidate_json.get("industries", "Not Specified"),
+                key_project=self.candidate_json.get("key_project", "Not Specified"),
+                key_experience=self.candidate_json.get("key_experience", "Not Specified")
+            )
+            messages.append({"role": "system", "content": formatted_prompt})
         else:
             messages.append({"role": "system", "content": self._get_static_system_prompt()})
             if self.interview_strategy:
@@ -445,9 +455,14 @@ Return ONLY valid JSON (Do NOT change keys):
     
     def get_opening_message(self) -> str:
         if self.candidate_json:
-            title = self.candidate_json.get("job_title", "Candidate")
-            domain = self.candidate_json.get("industry_domain", "your field")
-            return f"Hello. I've reviewed your background as a {title} within {domain}. Let's dive straight into your experience. Can you elaborate on one of your 'killer requirements' or a specific high-impact project you've led?"
+            name = self.candidate_json.get("full_name", "Candidate")
+            # We don't say Hello/Welcome as per the new strict prompt directive 1
+            # But the Brain needs to generate the FIRST message. 
+            # Actually, the prompt says "Start your very first message with a highly specific, deep technical question"
+            # So we should call the LLM to get that first question. 
+            # For now, let's keep it as a placeholder that triggers the first LLM turn if needed,
+            # or just return a minimal stirng that main_app uses to trigger the first turn.
+            return f"Opening analysis for {name}. Processing 'Key Project' for technical validation..."
 
         if not self.expert_profile:
             return "Hello! Thank you for joining this interview. Shall we begin?"
