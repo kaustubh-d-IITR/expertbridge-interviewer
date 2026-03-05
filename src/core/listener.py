@@ -33,11 +33,11 @@ class Listener:
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
         self.deepgram = DeepgramClient(api_key=self.api_key)
-        print(f"[Listener] Initialized (v4.0). API Key from: {source}")
+        print(f"[Listener] Initialized (v4.2). API Key from: {source}")
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
         """
-        Transcribes audio data using Deepgram's Prerecorded API with official v3 syntax and byte extraction.
+        Transcribes audio data using Deepgram's Prerecorded API with official v4.x+ routing.
         """
         try:
             # Extract raw bytes if it's a Streamlit UploadedFile or file-like object
@@ -63,18 +63,42 @@ class Listener:
             except:
                 options = options_dict
 
-            print(f"[DEBUG] Starting transcription v4.0 (Size: {len(audio_bytes)} bytes)")
+            print(f"[DEBUG] Starting transcription v4.2 (Size: {len(audio_bytes)} bytes)")
 
-            # Official v3 endpoint call with path discovery
+            # Official v4.x+ Routing Logic
+            response = None
+            success = False
+            
+            # Attempt 1: New v4.x routing (.rest instead of .prerecorded)
             try:
-                response = self.deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
-            except (AttributeError, Exception):
-                if hasattr(self.deepgram.listen, "prerecorded"):
-                    response = self.deepgram.listen.prerecorded.transcribe_file(payload, options)
-                elif hasattr(self.deepgram.listen, "rest"):
+                if hasattr(self.deepgram.listen, "rest"):
                     response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
-                else:
-                    raise AttributeError("Could not find a valid transcription method path.")
+                    success = True
+                    print("[DEBUG] Used v4.x routing: listen.rest")
+            except Exception: pass
+
+            # Attempt 2: Newest v5/v6 fallback (.v1.media)
+            if not success:
+                try:
+                    if hasattr(self.deepgram.listen, "v1"):
+                        response = self.deepgram.listen.v1.media.transcribe_file(payload, options)
+                        success = True
+                        print("[DEBUG] Used v5/v6 routing: listen.v1.media")
+                except Exception: pass
+
+            # Attempt 3: Legacy v3.x fallback (.prerecorded)
+            if not success:
+                try:
+                    if hasattr(self.deepgram.listen, "prerecorded"):
+                        response = self.deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
+                        success = True
+                        print("[DEBUG] Used legacy v3.x routing: listen.prerecorded")
+                except Exception: pass
+
+            if not success:
+                # Diagnostic dump if all fallbacks fail
+                print(f"[DEBUG] Full Discovery Failed. Listen Dir: {dir(self.deepgram.listen)}")
+                raise AttributeError("Deepgram SDK: Could not find a valid transcription method in any known path (v4.2).")
 
             # Convert response to dictionary safely
             if not isinstance(response, dict):
@@ -88,7 +112,7 @@ class Listener:
             transcript = response_dict["results"]["channels"][0]["alternatives"][0]["transcript"]
             detected_lang = response_dict.get("results", {}).get("channels", [{}])[0].get("detected_language", "en")
             
-            print(f"[Listener] Transcription Success (v4.0): {transcript[:50]}...")
+            print(f"[Listener] Transcription Success (v4.2): {transcript[:50]}...")
             
             return {
                 "text": transcript,
@@ -97,6 +121,6 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error [v4.0]: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v4.2]: {str(e)}"
             print(f"[Listener] {err_msg}")
             return {"text": "", "lang": "en", "error": err_msg}
