@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v1.1
+# ExpertBridge AI Interviewer - v3.2 (Transcription Fix)2 (Transcription Fix)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -27,6 +27,10 @@ if not (os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")) and no
 def main():
     # Page Config
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
+    
+    st.sidebar.title("🎤 Control Center")
+    st.sidebar.caption("Deployment Version: v3.2")
+    st.sidebar.divider()
 
     # --- Session State ---
     if "chat_history" not in st.session_state:
