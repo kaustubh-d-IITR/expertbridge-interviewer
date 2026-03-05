@@ -20,7 +20,7 @@ class Listener:
             print("[Listener] ERROR: DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
-        print(f"[Listener] Initialized (v3.4). API Key loaded from: {source}")
+        print(f"[Listener] Initialized (v3.5). Type: {type(self.deepgram)} | ListenType: {type(self.deepgram.listen)}")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
@@ -64,25 +64,35 @@ class Listener:
                 "detect_language": True, # Feature 1: Auto-Detect Language
             }
             
-            # Ultra-defensive v3.4 call structure
-            try:
-                # 1. Try prerecorded.v('1')
-                _pre = getattr(self.deepgram.listen, "prerecorded", None)
-                if _pre and hasattr(_pre, "v"):
-                    response = _pre.v("1").transcribe_file(payload, options)
-                # 2. Try rest.v('1')
-                elif hasattr(self.deepgram.listen, "rest"):
-                    response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
-                # 3. Try direct v('1')
-                elif hasattr(self.deepgram.listen, "v"):
-                    response = self.deepgram.listen.v("1").transcribe_file(payload, options)
-                # 4. Last ditch: direct call
-                else:
-                    response = self.deepgram.listen.transcribe_file(payload, options)
-            except (AttributeError, Exception) as inner_e:
-                 # 5. Very specific fallback for some 3.x variations
-                 print(f"[DEBUG] Nested fallback triggered due to: {inner_e}")
-                 response = self.deepgram.listen.prerecorded.transcribe_file(payload, options)
+            # Discovery loop to find the correct call path for deepgram-sdk 3.x
+            response = None
+            success = False
+            
+            # Paths to try in order of expected likelihood
+            candidates = [
+                (getattr(self.deepgram.listen, "rest", None), True),         # .rest.v("1")
+                (getattr(self.deepgram.listen, "prerecorded", None), True),   # .prerecorded.v("1")
+                (self.deepgram.listen, True),                                # .v("1")
+                (getattr(self.deepgram.listen, "rest", None), False),        # .rest.transcribe_file
+                (getattr(self.deepgram.listen, "prerecorded", None), False),  # .prerecorded.transcribe_file
+                (self.deepgram.listen, False)                                # .transcribe_file
+            ]
+
+            for obj, use_v in candidates:
+                if obj is None: continue
+                try:
+                    target = obj.v("1") if use_v and hasattr(obj, "v") else obj
+                    if hasattr(target, "transcribe_file"):
+                        response = target.transcribe_file(payload, options)
+                        success = True
+                        break
+                except Exception:
+                    continue
+
+            if not success:
+                # Diagnostic dump if all fallbacks fail
+                print(f"[DEBUG] Discovery Failed. Listen Dir: {dir(self.deepgram.listen)}")
+                raise AttributeError("Deepgram SDK: Could not find a valid 'transcribe_file' method in any known path.")
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
             # Extract transcript and detected language
@@ -121,7 +131,7 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error [v3.4]: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v3.5]: {str(e)}"
             print(f"[Listener] {err_msg}")
             # Ensure we return a structured dictionary so Orchestrator can handle the message
             return {"text": "", "lang": "en", "error": err_msg}
