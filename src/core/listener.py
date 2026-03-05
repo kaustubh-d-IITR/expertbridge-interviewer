@@ -4,17 +4,23 @@ from deepgram import DeepgramClient
 class Listener:
     def __init__(self):
         self.api_key = os.getenv("DEEPGRAM_API_KEY")
+        source = "os.environ"
         
         # Fallback to Streamlit secrets (for Cloud deployment)
         if not self.api_key:
             try:
                 import streamlit as st
                 self.api_key = st.secrets.get("DEEPGRAM_API_KEY")
+                if self.api_key:
+                    source = "st.secrets"
             except Exception:
                 pass
                 
         if not self.api_key:
-            raise ValueError("DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
+            print("[Listener] ERROR: DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
+            raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
+            
+        print(f"[Listener] Initialized. API Key loaded from: {source}")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
@@ -94,5 +100,7 @@ class Listener:
             }
         
         except Exception as e:
-            print(f"Transcription error: {e}")
-            return {"text": "", "lang": "en"}
+            err_msg = f"Deepgram Transcription Error: {str(e)}"
+            print(f"[Listener] {err_msg}")
+            # Ensure we return a structured dictionary so Orchestrator can handle the message
+            return {"text": "", "lang": "en", "error": err_msg}

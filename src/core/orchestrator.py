@@ -32,10 +32,16 @@ class Orchestrator:
     def run_interview_turn(self, audio_input, mime_type="audio/wav", settings=None):
         elapsed_time = time.time() - self.start_time if self.start_time else 0
         
+        # STEP 1: Convert audio to text
         try:
             transcription_result = self.listener.get_transcription(audio_input, mime_type)
+            
+            # Extract text and handle potential internal errors
             if isinstance(transcription_result, dict):
                 user_text = transcription_result.get("text", "")
+                internal_error = transcription_result.get("error")
+                if internal_error:
+                    self.last_error = f"[Transcription] {internal_error}"
             else:
                 user_text = str(transcription_result)
             
@@ -44,7 +50,9 @@ class Orchestrator:
                 fallback_audio = self.speaker.text_to_speech(fallback_text)
                 return user_text, fallback_text, fallback_audio, False
         except Exception as e:
-            print(f"[Orchestrator] Transcription error: {e}")
+            err_msg = f"Critical Transcription Failure: {str(e)}"
+            print(f"[Orchestrator] {err_msg}")
+            self.last_error = err_msg
             fallback_text = "I'm having trouble hearing you. Please try again."
             fallback_audio = self.speaker.text_to_speech(fallback_text)
             return None, fallback_text, fallback_audio, False
