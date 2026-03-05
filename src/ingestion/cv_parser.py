@@ -43,6 +43,7 @@ def extract_profile_to_json(resume_text, brain_instance):
         raw_json = response.choices[0].message.content.strip()
         # Ensure it's valid JSON
         profile_json = json.loads(raw_json)
+        print(f"[DEBUG] Extracted Candidate JSON: {json.dumps(profile_json, indent=2)}")
         print(f"[Parser] Successfully extracted profile for: {profile_json.get('full_name', 'Unknown')}")
         return profile_json
     except Exception as e:
