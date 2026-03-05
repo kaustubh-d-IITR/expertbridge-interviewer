@@ -20,7 +20,7 @@ class Listener:
             print("[Listener] ERROR: DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
-        print(f"[Listener] Initialized. API Key loaded from: {source}")
+        print(f"[Listener] Initialized (v3.1). API Key loaded from: {source}")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
@@ -110,7 +110,7 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v3.1]: {str(e)}"
             print(f"[Listener] {err_msg}")
             # Ensure we return a structured dictionary so Orchestrator can handle the message
             return {"text": "", "lang": "en", "error": err_msg}
