@@ -33,26 +33,25 @@ class Listener:
             
             if len(buffer_data) < 100: 
                 print("[DEBUG] Audio data too small, ignoring.")
-                return ""
+                return {"text": "", "lang": "en"}
 
-            # Deepgram "payload" for raw audio should be the bytes themselves 
-            # passed as 'request' keyword argument.
+            # Deepgram "payload" for raw audio
+            payload = {"buffer": buffer_data}
             
-            response = self.deepgram.listen.v1.media.transcribe_file(
-                request=buffer_data,
-                model="nova-3-general",
-                smart_format=True,
-                utterances=True,
-                punctuate=True,
-                detect_language=True, # Feature 1: Auto-Detect Language
-                # language="en", # Removed hardcoded language
-            )
+            options = {
+                "model": "nova-2",
+                "smart_format": True,
+                "utterances": True,
+                "punctuate": True,
+                "detect_language": True, # Feature 1: Auto-Detect Language
+            }
+            
+            response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
             # Extract transcript and detected language
             transcript = ""
             detected_lang = "en"
-            confidence = 0.0
 
             if hasattr(response, 'results'):
                  # Deepgram SDK v3 structure
