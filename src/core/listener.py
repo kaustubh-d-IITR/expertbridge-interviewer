@@ -1,17 +1,6 @@
 import os
 import json
-from deepgram import DeepgramClient
-
-# RESILIENT IMPORTS: SDK behavior varies between minor versions on various platforms
-try:
-    from deepgram import PrerecordedOptions, FileSource
-except ImportError:
-    try:
-        from deepgram.clients.prerecorded.v1 import PrerecordedOptions, FileSource
-    except ImportError:
-        # Final fallback: use dictionaries if the classes are missing
-        PrerecordedOptions = dict
-        FileSource = dict
+import requests
 
 class Listener:
     def __init__(self):
@@ -32,87 +21,56 @@ class Listener:
             print("[Listener] ERROR: DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
-        self.deepgram = DeepgramClient(api_key=self.api_key)
-        print(f"[Listener] Initialized (v4.2). API Key from: {source}")
+        print(f"[Listener] Initialized (v4.3 - REST Mode). API Key from: {source}")
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
         """
-        Transcribes audio data using Deepgram's Prerecorded API with official v4.x+ routing.
+        Transcribes audio data using Deepgram's direct REST API for maximum stability.
+        Bypasses the SDK to avoid version-drift issues.
         """
         try:
-            # Extract raw bytes if it's a Streamlit UploadedFile or file-like object
+            # 1. Extract raw bytes if it's a Streamlit UploadedFile or file-like object
             if hasattr(audio_data, 'read'):
                 audio_bytes = audio_data.read()
             else:
                 audio_bytes = audio_data
 
-            # Prepare payload with raw bytes
-            payload: FileSource = {"buffer": audio_bytes}
-            
-            # Configure options
-            options_dict = {
+            if not audio_bytes:
+                return {"text": "", "lang": "en", "error": "Empty audio data received"}
+
+            # 2. Configure REST API Call
+            url = "https://api.deepgram.com/v1/listen"
+            params = {
                 "model": "nova-2",
-                "smart_format": True,
-                "punctuate": True,
-                "utterances": False
+                "smart_format": "true",
+                "language": "en"
             }
+            headers = {
+                "Authorization": f"Token {self.api_key}",
+                "Content-Type": mime_type
+            }
+
+            print(f"[DEBUG] Making direct REST call to Deepgram v4.3 (Size: {len(audio_bytes)} bytes)")
             
-            # Use PrerecordedOptions class if available, else dict
-            try:
-                options = PrerecordedOptions(**options_dict) if PrerecordedOptions is not dict else options_dict
-            except:
-                options = options_dict
+            # 3. Execute Request
+            response = requests.post(url, params=params, headers=headers, data=audio_bytes, timeout=30)
+            response.raise_for_status()
+            response_data = response.json()
 
-            print(f"[DEBUG] Starting transcription v4.2 (Size: {len(audio_bytes)} bytes)")
-
-            # Official v4.x+ Routing Logic
-            response = None
-            success = False
+            # 4. Extract transcript safely from REST response structure
+            # Structure: results -> channels[0] -> alternatives[0] -> transcript
+            channels = response_data.get("results", {}).get("channels", [])
+            if not channels:
+                raise ValueError("Deepgram REST API: No channels found in response")
             
-            # Attempt 1: New v4.x routing (.rest instead of .prerecorded)
-            try:
-                if hasattr(self.deepgram.listen, "rest"):
-                    response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
-                    success = True
-                    print("[DEBUG] Used v4.x routing: listen.rest")
-            except Exception: pass
-
-            # Attempt 2: Newest v5/v6 fallback (.v1.media)
-            if not success:
-                try:
-                    if hasattr(self.deepgram.listen, "v1"):
-                        response = self.deepgram.listen.v1.media.transcribe_file(payload, options)
-                        success = True
-                        print("[DEBUG] Used v5/v6 routing: listen.v1.media")
-                except Exception: pass
-
-            # Attempt 3: Legacy v3.x fallback (.prerecorded)
-            if not success:
-                try:
-                    if hasattr(self.deepgram.listen, "prerecorded"):
-                        response = self.deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
-                        success = True
-                        print("[DEBUG] Used legacy v3.x routing: listen.prerecorded")
-                except Exception: pass
-
-            if not success:
-                # Diagnostic dump if all fallbacks fail
-                print(f"[DEBUG] Full Discovery Failed. Listen Dir: {dir(self.deepgram.listen)}")
-                raise AttributeError("Deepgram SDK: Could not find a valid transcription method in any known path (v4.2).")
-
-            # Convert response to dictionary safely
-            if not isinstance(response, dict):
-                try:
-                    response_dict = json.loads(response.to_json())
-                except:
-                    response_dict = response
-            else:
-                response_dict = response
-
-            transcript = response_dict["results"]["channels"][0]["alternatives"][0]["transcript"]
-            detected_lang = response_dict.get("results", {}).get("channels", [{}])[0].get("detected_language", "en")
+            alternatives = channels[0].get("alternatives", [])
+            if not alternatives:
+                raise ValueError("Deepgram REST API: No alternatives found in response")
+                
+            transcript = alternatives[0].get("transcript", "")
+            detected_lang = channels[0].get("detected_language", "en")
             
-            print(f"[Listener] Transcription Success (v4.2): {transcript[:50]}...")
+            print(f"[Listener] Transcription Success (v4.3 REST): {transcript[:50]}...")
             
             return {
                 "text": transcript,
@@ -121,6 +79,9 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error [v4.2]: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v4.3 REST]: {str(e)}"
             print(f"[Listener] {err_msg}")
+            # Try to print response text if available for the user to see the error from Deepgram
+            if 'response' in locals() and hasattr(response, 'text'):
+                print(f"[DEBUG] Deepgram Error Body: {response.text}")
             return {"text": "", "lang": "en", "error": err_msg}
