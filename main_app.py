@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.0 (Byte Fix 16:50)
+# ExpertBridge AI Interviewer - v4.1 (Loop Fix 16:55)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.0 (16:50)")
+    st.sidebar.caption("Deployment Version: v4.1 (16:55)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -297,6 +297,8 @@ def main():
 
         if audio_value:
              with st.spinner("Listening..."):
+                 # 1. Extract raw bytes immediately (User Fix v4.1)
+                 audio_bytes = audio_value.read()
                  mime_type = audio_value.type
                  
                  import time
@@ -307,14 +309,19 @@ def main():
                     "response_language": st.session_state.get("response_language", "English"),
                     "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
                     "job_context": st.session_state.get("current_job_context", None),
-                    "elapsed_time": elapsed_seconds # Feature 7: Pass elapsed time
+                    "elapsed_time": elapsed_seconds
                  }
 
+                 # 2. Pass bytes (NOT the file object) to the orchestrator
                  user_text, ai_text, ai_audio, _ = st.session_state.orchestrator_v3.run_interview_turn(
-                     audio_value, 
+                     audio_bytes, 
                      mime_type,
                      settings=settings
                  )
+                 
+                 # 3. CRITICAL: Clear the audio input widget by bumping the key count
+                 # This prevents Streamlit from re-processing the same audio on the next rerun
+                 st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
                  
                  # Capture and Clear last error for log persistence
                  has_new_error = False
@@ -326,13 +333,11 @@ def main():
                  if user_text:
                      st.session_state.chat_history.append(("user", user_text, None))
                      st.session_state.chat_history.append(("assistant", ai_text, ai_audio))
-                     st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
                      st.rerun()
                  else:
                      st.warning("I couldn't hear that. Please try speaking again/louder.")
-                     # Force a rerun if there's a new error captured, so it shows up in logs immediately
-                     if has_new_error:
-                         st.rerun()
+                     # No mandatory rerun here - the key bump and script finish will refresh the UI naturally
+                     # and the input widget will be cleared, stopping the infinite loop.
 
         # Debug Logs (Moved to bottom to ensure it captures current turn errors)
         st.divider()
