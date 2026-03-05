@@ -8,11 +8,12 @@ class Orchestrator:
     """
     Refactored Orchestrator (Adapter Pattern) for v3.0 Brain.
     """
-    def __init__(self, expert_profile: Optional[Dict] = None):
-        self.brain = Brain(expert_profile=expert_profile)
+    def __init__(self, expert_profile: Optional[Dict] = None, candidate_json: Optional[Dict] = None):
+        self.brain = Brain(expert_profile=expert_profile, candidate_json=candidate_json)
         self.listener = Listener() # Deepgram
         self.speaker = Speaker() # Deepgram Aura
         self.expert_profile = expert_profile
+        self.candidate_json = candidate_json
         self.transcript = []
         self.scores = []
         self.phase = "READY"

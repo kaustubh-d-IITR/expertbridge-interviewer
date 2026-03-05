@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.3 (REST Refactor 17:25)
+# ExpertBridge AI Interviewer - v4.4 (Zero-Touch Flow 23:15)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.3 (17:25)")
+    st.sidebar.caption("Deployment Version: v4.4 (23:15)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -37,6 +37,8 @@ def main():
         st.session_state.chat_history = []
     if "expert_profile" not in st.session_state:
         st.session_state.expert_profile = None
+    if "candidate_json" not in st.session_state:
+        st.session_state.candidate_json = None
     if "interview_active" not in st.session_state:
         st.session_state.interview_active = False
     if "current_phase" not in st.session_state:
@@ -44,9 +46,12 @@ def main():
     if "orchestrator_v3" not in st.session_state or st.session_state.orchestrator_v3 is None:
         try:
             st.session_state.orchestrator_v3 = Orchestrator()
-            # Restore profile if available
-            if st.session_state.expert_profile:
-                st.session_state.orchestrator_v3 = Orchestrator(expert_profile=st.session_state.expert_profile)
+            # Restore state if available
+            if st.session_state.expert_profile or st.session_state.candidate_json:
+                st.session_state.orchestrator_v3 = Orchestrator(
+                    expert_profile=st.session_state.expert_profile,
+                    candidate_json=st.session_state.candidate_json
+                )
         except ValueError as e:
             st.error(f"⚠️ Configuration Missing: {e}")
             st.info("To fix this on Streamlit Cloud:\n1. Go to **Manage App** -> **Settings** -> **Secrets**\n2. Add your keys (Either Azure OR Standard OpenAI):\n```\n# Option 1: Azure\nAZURE_OPENAI_API_KEY = \"...\"\nAZURE_OPENAI_ENDPOINT = \"...\"\n\n# Option 2: Standard OpenAI\nOPENAI_API_KEY = \"sk-...\"\n\n# Required\nDEEPGRAM_API_KEY = \"...\"\n```")
@@ -137,32 +142,36 @@ def main():
         uploaded_file = st.file_uploader("Upload PDF CV", type=["pdf"])
         
         if uploaded_file and not st.session_state.interview_active:
-            # Start Interview Button Logic
-            if st.button("Start Interview"):
-                if not st.session_state.instructions_acknowledged:
-                    st.error("⚠️ Please read and acknowledge the guidelines before starting!")
-                elif not st.session_state.expert_profile:
-                    st.error("⚠️ Please fill out and SAVE the Candidate Profile in the main window first!")
-                else:
-                    with st.spinner("Initializing AI Interviewer..."):
-                        # Re-initialize Orchestrator with Profile (Phase 17)
-                        st.session_state.orchestrator_v3 = Orchestrator(expert_profile=st.session_state.expert_profile)
-                        
-                        # Parse CV
-                        cv_text = parse_cv(uploaded_file)
-                        st.session_state.cv_text = cv_text
-                        
-                        # Start Interview
-                        st.session_state.orchestrator_v3.start_interview(
-                            st.session_state.candidate_name, 
-                            cv_text, 
-                            st.session_state.get("current_job_context"),
-                            mode=st.session_state.mode
-                        )
+            if not st.session_state.instructions_acknowledged:
+                st.warning("⚠️ Please acknowledge the guidelines above before uploading your CV.")
+            else:
+                from src.ingestion.cv_parser import extract_profile_to_json
+                
+                with st.spinner("Analyzing profile with ExpertBridge Intelligence..."):
+                    # 1. Parse CV Text
+                    cv_text = parse_cv(uploaded_file)
+                    st.session_state.cv_text = cv_text
+                    
+                    # 2. AI Extraction (Zero-Touch)
+                    # We pass the temporary orchestrator's brain to handle the extraction call
+                    candidate_json = extract_profile_to_json(cv_text, st.session_state.orchestrator_v3.brain)
+                    st.session_state.candidate_json = candidate_json
+                    
+                    # 3. Re-initialize Orchestrator with the new JSON
+                    st.session_state.orchestrator_v3 = Orchestrator(candidate_json=candidate_json)
+                    
+                    # 4. Start Interview
+                    st.session_state.orchestrator_v3.start_interview(
+                        candidate_json.get("job_title", "Candidate"), 
+                        cv_text, 
+                        st.session_state.get("current_job_context"),
+                        mode=st.session_state.mode
+                    )
+                    
                     st.session_state.interview_active = True
                     import time
                     st.session_state.start_time = time.time()
-                    st.success("Interview Started! Please introduce yourself.")
+                    st.success("Analysis Complete! Interview Starting...")
                     st.rerun()
 
         # Feature 9: Live Timer (JavaScript) - Robust Version (Now outside the 'not active' block)
@@ -258,9 +267,8 @@ def main():
         st.markdown("---")
         st.markdown("### How to Start:")
         st.markdown("1. Click the button below to acknowledge these rules.\n"
-                    "2. Fill out your **Candidate Profile** in the next screen.\n"
-                    "3. Select a Job Description and **Upload your PDF Resume** in the sidebar.\n"
-                    "4. Click **Start Interview**.")
+                    "2. Select a Job Description in the sidebar.\n"
+                    "3. **Upload your PDF Resume** in the sidebar to begin instantly.")
         
         if st.button("✅ I Understand. Proceed to Setup.", type="primary", use_container_width=True):
             st.session_state.instructions_acknowledged = True
@@ -354,40 +362,15 @@ def main():
             if last_sender == "assistant" and last_audio:
                 st.audio(last_audio, format="audio/mp3", autoplay=True)
     else:
-        # Phase 17: Candidate Profile Form (Main Area)
-        st.title("👤 Candidate Profile")
-        st.markdown("Please tell us about your background so we can tailor the interview.")
-        
-        with st.form("profile_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                name = st.text_input("Full Name", value=st.session_state.candidate_name)
-                role = st.text_input("Current Role", placeholder="e.g. Senior Backend Engineer")
-                years = st.number_input("Years of Experience", min_value=0, max_value=50, value=5)
-            with col2:
-                skills = st.text_input("Top Skills (comma-separated)", placeholder="Python, AWS, System Design")
-                industries = st.text_input("Industries (comma-separated)", placeholder="FinTech, E-commerce, AI")
-                companies = st.text_input("Target/Past Companies", placeholder="Google, StartupX")
-            
-            project = st.text_area("Key Project (Briefly describe one major achievement)", 
-                                   placeholder="Built a real-time payment engine handling 10k TPS...")
-            
-            experience = st.text_area("Key Experience (Briefly describe your most significant professional experience)", 
-                                      placeholder="Led a cross-functional team of 15 engineers to rewrite the core monolithic billing service into microservices...")
-            
-            if st.form_submit_button("💾 Save Profile"):
-                st.session_state.candidate_name = name
-                st.session_state.expert_profile = {
-                    "name": name,
-                    "current_role": role,
-                    "experience_years": years,
-                    "top_skills": skills,
-                    "industries": industries,
-                    "past_companies": companies,
-                    "key_project": project,
-                    "key_experience": experience
-                }
-                st.success("✅ Profile Saved! You can now upload your CV in the sidebar and start.")
+        # Zero-Touch Profile Landing
+        st.title("👤 Candidate Identification")
+        st.info("👈 **Resume Detected:** Please upload your PDF CV in the sidebar to begin the ExpertBridge AI analysis.")
+        st.markdown("""
+        The system will automatically:
+        - Extract your domain expertise.
+        - Identify your 'Killer Requirements'.
+        - Tailor the interview questions to your background.
+        """)
 
         st.info("👈 **Next Step:** Upload your CV in the sidebar and click 'Start Interview'.")
 

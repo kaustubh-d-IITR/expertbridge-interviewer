@@ -10,7 +10,7 @@ class Brain:
     Refactored v3.0 - Separate Speech and Analysis pipelines.
     """
     
-    def __init__(self, expert_profile: Optional[Dict] = None):
+    def __init__(self, expert_profile: Optional[Dict] = None, candidate_json: Optional[Dict] = None):
         self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-01-preview")
@@ -40,7 +40,8 @@ class Brain:
         self.interview_phase = "OPENING"
         self.strike_count = 0
         self.question_count = 0
-        self.last_error = None # Feature 34: Capture internal errors
+        self.last_error = None
+        self.candidate_json = candidate_json # Zero-Touch JSON Profile
         
         if expert_profile:
             from src.utils.question_strategy import build_question_strategy
@@ -288,9 +289,16 @@ class Brain:
 
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
         messages = []
-        messages.append({"role": "system", "content": self._get_static_system_prompt()})
-        if self.interview_strategy:
-            messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
+        
+        # Zero-Touch Version: Use the new strict prompt if candidate_json is available
+        if self.candidate_json:
+            from src.utils.prompts import ZERO_TOUCH_INTERVIEWER_PROMPT
+            json_str = json.dumps(self.candidate_json, indent=2)
+            messages.append({"role": "system", "content": ZERO_TOUCH_INTERVIEWER_PROMPT.format(candidate_json_string=json_str)})
+        else:
+            messages.append({"role": "system", "content": self._get_static_system_prompt()})
+            if self.interview_strategy:
+                messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
         
         # Inject Job/Domain Context
         if hasattr(self, 'job_context') and self.job_context:
@@ -436,6 +444,11 @@ Return ONLY valid JSON (Do NOT change keys):
         return any(keyword in input_lower for keyword in abuse_keywords)
     
     def get_opening_message(self) -> str:
+        if self.candidate_json:
+            title = self.candidate_json.get("job_title", "Candidate")
+            domain = self.candidate_json.get("industry_domain", "your field")
+            return f"Hello. I've reviewed your background as a {title} within {domain}. Let's dive straight into your experience. Can you elaborate on one of your 'killer requirements' or a specific high-impact project you've led?"
+
         if not self.expert_profile:
             return "Hello! Thank you for joining this interview. Shall we begin?"
         name = self.expert_profile.get("name", "there")
