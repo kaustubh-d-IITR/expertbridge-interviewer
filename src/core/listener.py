@@ -21,7 +21,7 @@ class Listener:
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
         self.deepgram = DeepgramClient(api_key=self.api_key)
-        print(f"[Listener] Initialized (v3.6). Type: {type(self.deepgram)} | ListenType: {type(self.deepgram.listen)}")
+        print(f"[Listener] Initialized (v3.7). Type: {type(self.deepgram)}")
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
         """
@@ -64,35 +64,53 @@ class Listener:
                 "detect_language": True, # Feature 1: Auto-Detect Language
             }
             
-            # Discovery loop to find the correct call path for deepgram-sdk 3.x
+            # SMART DISCOVERY: Crawl the SDK to find 'transcribe_file'
             response = None
             success = False
             
-            # Paths to try in order of expected likelihood
-            candidates = [
-                (getattr(self.deepgram.listen, "rest", None), True),         # .rest.v("1")
-                (getattr(self.deepgram.listen, "prerecorded", None), True),   # .prerecorded.v("1")
-                (self.deepgram.listen, True),                                # .v("1")
-                (getattr(self.deepgram.listen, "rest", None), False),        # .rest.transcribe_file
-                (getattr(self.deepgram.listen, "prerecorded", None), False),  # .prerecorded.transcribe_file
-                (self.deepgram.listen, False)                                # .transcribe_file
-            ]
-
-            for obj, use_v in candidates:
-                if obj is None: continue
-                try:
-                    target = obj.v("1") if use_v and hasattr(obj, "v") else obj
-                    if hasattr(target, "transcribe_file"):
-                        response = target.transcribe_file(payload, options)
+            # Step 1: Check known high-level entry points (including v1/v2 found in logs)
+            for path in ["v1", "v2", "prerecorded", "rest"]:
+                obj = getattr(self.deepgram.listen, path, None)
+                if obj and hasattr(obj, "transcribe_file"):
+                    try:
+                        response = obj.transcribe_file(payload, options)
                         success = True
+                        print(f"[DEBUG] Found transcription method via: listen.{path}")
                         break
-                except Exception:
-                    continue
+                    except Exception: continue
+            
+            # Step 2: If failed, try with .v("1") appended to known paths
+            if not success:
+                for path in ["v1", "v2", "prerecorded", "rest", ""]:
+                    try:
+                        obj = self.deepgram.listen if path == "" else getattr(self.deepgram.listen, path, None)
+                        if obj and hasattr(obj, "v"):
+                            target = obj.v("1")
+                            if hasattr(target, "transcribe_file"):
+                                response = target.transcribe_file(payload, options)
+                                success = True
+                                print(f"[DEBUG] Found transcription method via: listen.{path}.v('1')")
+                                break
+                    except Exception: continue
+
+            # Step 3: Nuclear fallback - iterate EVERYTHING in listen
+            if not success:
+                for attr in dir(self.deepgram.listen):
+                    if attr.startswith("_"): continue
+                    try:
+                        obj = getattr(self.deepgram.listen, attr)
+                        if hasattr(obj, "transcribe_file"):
+                            response = obj.transcribe_file(payload, options)
+                            success = True
+                            print(f"[DEBUG] Found transcription method via blind discovery: listen.{attr}")
+                            break
+                    except Exception: continue
 
             if not success:
-                # Diagnostic dump if all fallbacks fail
-                print(f"[DEBUG] Discovery Failed. Listen Dir: {dir(self.deepgram.listen)}")
-                raise AttributeError("Deepgram SDK: Could not find a valid 'transcribe_file' method in any known path.")
+                # Diagnostic dump for debugging
+                print(f"[DEBUG] Full Discovery Failed. Attributes searched: {dir(self.deepgram.listen)}")
+                raise AttributeError("Deepgram SDK: Could not find 'transcribe_file' in any attribute of 'deepgram.listen'.")
+            
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
             # Extract transcript and detected language
@@ -131,7 +149,7 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error [v3.6]: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v3.7]: {str(e)}"
             print(f"[Listener] {err_msg}")
             # Ensure we return a structured dictionary so Orchestrator can handle the message
             return {"text": "", "lang": "en", "error": err_msg}
