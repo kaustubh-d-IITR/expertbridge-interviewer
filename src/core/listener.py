@@ -20,7 +20,7 @@ class Listener:
             print("[Listener] ERROR: DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
             raise ValueError("DEEPGRAM_API_KEY not found in any available source.")
             
-        print(f"[Listener] Initialized (v3.1). API Key loaded from: {source}")
+        print(f"[Listener] Initialized (v3.4). API Key loaded from: {source}")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
@@ -64,19 +64,24 @@ class Listener:
                 "detect_language": True, # Feature 1: Auto-Detect Language
             }
             
-            # Ultra-defensive way to find the transcription method
+            # Ultra-defensive v3.4 call structure
             try:
-                if hasattr(self.deepgram.listen, "prerecorded"):
-                    response = self.deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
+                # 1. Try prerecorded.v('1')
+                _pre = getattr(self.deepgram.listen, "prerecorded", None)
+                if _pre and hasattr(_pre, "v"):
+                    response = _pre.v("1").transcribe_file(payload, options)
+                # 2. Try rest.v('1')
                 elif hasattr(self.deepgram.listen, "rest"):
                     response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
+                # 3. Try direct v('1')
                 elif hasattr(self.deepgram.listen, "v"):
                     response = self.deepgram.listen.v("1").transcribe_file(payload, options)
+                # 4. Last ditch: direct call
                 else:
-                    # Last ditch effort: try calling it directly if the SDK flattened it
                     response = self.deepgram.listen.transcribe_file(payload, options)
-            except AttributeError:
-                 # Fallback for very specific version overrides
+            except (AttributeError, Exception) as inner_e:
+                 # 5. Very specific fallback for some 3.x variations
+                 print(f"[DEBUG] Nested fallback triggered due to: {inner_e}")
                  response = self.deepgram.listen.prerecorded.transcribe_file(payload, options)
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
@@ -116,7 +121,7 @@ class Listener:
             }
         
         except Exception as e:
-            err_msg = f"Deepgram Transcription Error [v3.1]: {str(e)}"
+            err_msg = f"Deepgram Transcription Error [v3.4]: {str(e)}"
             print(f"[Listener] {err_msg}")
             # Ensure we return a structured dictionary so Orchestrator can handle the message
             return {"text": "", "lang": "en", "error": err_msg}

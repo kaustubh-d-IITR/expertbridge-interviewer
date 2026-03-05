@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v3.2 (Transcription Fix)2 (Transcription Fix)
+# ExpertBridge AI Interviewer - v3.4 (Force-Update 16:10)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v3.2")
+    st.sidebar.caption("Deployment Version: v3.4 (16:10)")
     st.sidebar.divider()
 
     # --- Session State ---
