@@ -4,8 +4,17 @@ from deepgram import DeepgramClient
 class Listener:
     def __init__(self):
         self.api_key = os.getenv("DEEPGRAM_API_KEY")
+        
+        # Fallback to Streamlit secrets (for Cloud deployment)
         if not self.api_key:
-            raise ValueError("DEEPGRAM_API_KEY not found in environment variables")
+            try:
+                import streamlit as st
+                self.api_key = st.secrets.get("DEEPGRAM_API_KEY")
+            except Exception:
+                pass
+                
+        if not self.api_key:
+            raise ValueError("DEEPGRAM_API_KEY not found in environment variables or Streamlit secrets")
         self.deepgram = DeepgramClient(api_key=self.api_key)
 
     def get_transcription(self, audio_data, mime_type="audio/wav"):
