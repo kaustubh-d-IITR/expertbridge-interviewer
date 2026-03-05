@@ -51,7 +51,10 @@ class Listener:
                 return {"text": "", "lang": "en"}
 
             # Deepgram "payload" for raw audio
-            payload = {"buffer": buffer_data}
+            payload = {
+                "buffer": buffer_data,
+                "mimetype": mime_type
+            }
             
             options = {
                 "model": "nova-2",

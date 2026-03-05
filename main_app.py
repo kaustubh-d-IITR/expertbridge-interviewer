@@ -285,10 +285,7 @@ def main():
              st.warning("Please reset the interview to try again (if allowed).")
              st.stop()
              
-        # Debug Logs (Hidden by default)
-        with st.expander("🛠️ System Logs (Debug)", expanded=False):
-            if "debug_logs" in st.session_state:
-                st.text(st.session_state.debug_logs)
+
 
         # Audio Input
         audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
@@ -315,11 +312,12 @@ def main():
                      settings=settings
                  )
                  
-                 # Feature 34: Capture Debug Logs from Orchestrator
+                 # Capture and Clear last error for log persistence
+                 has_new_error = False
                  if hasattr(st.session_state.orchestrator_v3, "last_error") and st.session_state.orchestrator_v3.last_error:
                      st.session_state.debug_logs += f"\n[ERROR] {st.session_state.orchestrator_v3.last_error}"
-                     # Clear it so it doesn't persist forever
                      st.session_state.orchestrator_v3.last_error = None
+                     has_new_error = True
                  
                  if user_text:
                      st.session_state.chat_history.append(("user", user_text, None))
@@ -328,6 +326,18 @@ def main():
                      st.rerun()
                  else:
                      st.warning("I couldn't hear that. Please try speaking again/louder.")
+                     # Force a rerun if there's a new error captured, so it shows up in logs immediately
+                     if has_new_error:
+                         st.rerun()
+
+        # Debug Logs (Moved to bottom to ensure it captures current turn errors)
+        st.divider()
+        with st.expander("🛠️ System Logs (Debug)", expanded=False):
+            if "debug_logs" in st.session_state:
+                st.text(st.session_state.debug_logs)
+                if st.button("🧹 Clear Logs"):
+                    st.session_state.debug_logs = ""
+                    st.rerun()
 
         # Autoplay
         if st.session_state.chat_history:
