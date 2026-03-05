@@ -35,6 +35,7 @@ class Brain:
         print(f"[Brain] Initialized (Provider: {self.provider})")
         
         self.expert_profile = expert_profile
+        self.job_context = None # Will be set later
         self.conversation_history = []
         self.interview_phase = "OPENING"
         self.strike_count = 0
@@ -55,6 +56,11 @@ class Brain:
         """
         self.job_context = job_context
         print(f"[Brain] Job Context Updated: {job_context.get('role', 'Unknown Role')}")
+        
+        # Rebuild strategy if profile exists
+        if self.expert_profile:
+            from src.utils.question_strategy import build_question_strategy
+            self.interview_strategy = build_question_strategy(self.expert_profile, self.job_context)
 
 
     def handle_user_input(self, user_input: str, elapsed_time: float) -> Dict[str, Any]:

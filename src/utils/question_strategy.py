@@ -1,4 +1,4 @@
-def build_question_strategy(expert_profile):
+def build_question_strategy(expert_profile, job_context=None):
     """
     Takes expert profile and returns personalized interview strategy.
     This tells the AI HOW to interview this specific person.
