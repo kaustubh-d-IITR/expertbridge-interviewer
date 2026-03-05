@@ -64,7 +64,14 @@ class Listener:
                 "detect_language": True, # Feature 1: Auto-Detect Language
             }
             
-            response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
+            # Try 'prerecorded' first, then 'rest' for compatibility
+            if hasattr(self.deepgram.listen, "prerecorded"):
+                response = self.deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
+            elif hasattr(self.deepgram.listen, "rest"):
+                response = self.deepgram.listen.rest.v("1").transcribe_file(payload, options)
+            else:
+                # Fallback for older v3 versions
+                response = self.deepgram.listen.v("1").transcribe_file(payload, options)
             print(f"[DEBUG] Raw Deepgram Response: {response}")
             
             # Extract transcript and detected language
