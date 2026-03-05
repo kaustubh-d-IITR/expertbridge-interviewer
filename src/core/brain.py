@@ -276,7 +276,7 @@ class Brain:
         Forces the LLM to follow the required topic progression based on the exact turn number.
         """
         instructions = {
-            0: "[CRITICAL INSTRUCTION] TOPIC 1 (ROLE OWNERSHIP & SCALE). Ask Question 1: Ask about the candidate's core mandate, team/org structure, and primary KPIs for their Key Experience or Project. Require concrete scale (budget, team size, revenue). DO NOT ask multi-part questions.",
+            0: "[CRITICAL INSTRUCTION] Ask Question 1. Look at the [MANDATORY CANDIDATE CONTEXT FROM RESUME] provided. Ask a highly specific technical question about their Key Project right now. No pleasantries. No 'Welcome'. No 'Tell me about yourself'. Dive into the technical complexity.",
             1: "[CRITICAL INSTRUCTION] TOPIC 1 (SYSTEM & DECISION DEPTH). Ask Question 2: Acknowledge their answer neutrally. Ask ONE deep dive question about the hardest architectural tradeoff, strategic pivot, or organizational challenge within that SAME experience.",
             2: "[CRITICAL INSTRUCTION] TOPIC 2 (FINANCIAL & STRATEGIC OWNERSHIP). MOVE TO A DIFFERENT EXPERIENCE from the resume. Notice their seniority. Ask Question 1: What scale of budget or P&L responsibility did they directly influence, and what were the hardest financial trade-offs made?",
             3: "[CRITICAL INSTRUCTION] TOPIC 2 (CRISIS & RECOVERY). Ask Question 2. Acknowledge normally. Ask ONE question about a major initiative under this topic that failed or faced a severe crisis. Focus on recovery, pressure, and turnaround leadership.",
@@ -290,25 +290,15 @@ class Brain:
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
         messages = []
         
-        # Zero-Touch Version: Use the new strict prompt if candidate_json is available
+        system_content = self._get_static_system_prompt()
         if self.candidate_json:
-            from src.utils.prompts import ZERO_TOUCH_INTERVIEWER_PROMPT
-            # Format the prompt using specific keys from candidate_json
-            # Use .get() with "Not Specified" as fallback to avoid KeyError
-            formatted_prompt = ZERO_TOUCH_INTERVIEWER_PROMPT.format(
-                full_name=self.candidate_json.get("full_name", "Candidate"),
-                current_role=self.candidate_json.get("current_role", "Expert"),
-                years_of_experience=self.candidate_json.get("years_of_experience", "N/A"),
-                top_skills=", ".join(self.candidate_json.get("top_skills", [])) if isinstance(self.candidate_json.get("top_skills"), list) else self.candidate_json.get("top_skills", "Not Specified"),
-                industries=", ".join(self.candidate_json.get("industries", [])) if isinstance(self.candidate_json.get("industries"), list) else self.candidate_json.get("industries", "Not Specified"),
-                key_project=self.candidate_json.get("key_project", "Not Specified"),
-                key_experience=self.candidate_json.get("key_experience", "Not Specified")
-            )
-            messages.append({"role": "system", "content": formatted_prompt})
-        else:
-            messages.append({"role": "system", "content": self._get_static_system_prompt()})
-            if self.interview_strategy:
-                messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
+            system_content += f"\n\n[MANDATORY CANDIDATE CONTEXT FROM RESUME]\n{json.dumps(self.candidate_json, indent=2)}\n\n"
+            system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding the 'key_project' or 'key_experience' listed above. Do not ask generic questions."
+        
+        messages.append({"role": "system", "content": system_content})
+        
+        if not self.candidate_json and self.interview_strategy:
+            messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
         
         # Inject Job/Domain Context
         if hasattr(self, 'job_context') and self.job_context:
@@ -455,14 +445,9 @@ Return ONLY valid JSON (Do NOT change keys):
     
     def get_opening_message(self) -> str:
         if self.candidate_json:
-            name = self.candidate_json.get("full_name", "Candidate")
-            # We don't say Hello/Welcome as per the new strict prompt directive 1
-            # But the Brain needs to generate the FIRST message. 
-            # Actually, the prompt says "Start your very first message with a highly specific, deep technical question"
-            # So we should call the LLM to get that first question. 
-            # For now, let's keep it as a placeholder that triggers the first LLM turn if needed,
-            # or just return a minimal stirng that main_app uses to trigger the first turn.
-            return f"Opening analysis for {name}. Processing 'Key Project' for technical validation..."
+            # Force the LLM to generate the first question
+            first_prompt = "The candidate has just joined the call. Look at their [MANDATORY CANDIDATE CONTEXT FROM RESUME]. Ask the first highly specific technical question about their Key Project right now. No pleasantries."
+            return self.generate_spoken_response(first_prompt, 0.0)
 
         if not self.expert_profile:
             return "Hello! Thank you for joining this interview. Shall we begin?"
