@@ -276,14 +276,14 @@ class Brain:
         Forces the LLM to follow the required topic progression based on the exact turn number.
         """
         instructions = {
-            0: "[CRITICAL INSTRUCTION] Ask Question 1. Look at the [MANDATORY CANDIDATE CONTEXT FROM RESUME] provided. Ask a highly specific technical question about their Key Project right now. No pleasantries. No 'Welcome'. No 'Tell me about yourself'. Dive into the technical complexity.",
-            1: "[CRITICAL INSTRUCTION] TOPIC 1 (SYSTEM & DECISION DEPTH). Ask Question 2: Acknowledge their answer neutrally. Ask ONE deep dive question about the hardest architectural tradeoff, strategic pivot, or organizational challenge within that SAME experience.",
-            2: "[CRITICAL INSTRUCTION] TOPIC 2 (FINANCIAL & STRATEGIC OWNERSHIP). MOVE TO A DIFFERENT EXPERIENCE from the resume. Notice their seniority. Ask Question 1: What scale of budget or P&L responsibility did they directly influence, and what were the hardest financial trade-offs made?",
-            3: "[CRITICAL INSTRUCTION] TOPIC 2 (CRISIS & RECOVERY). Ask Question 2. Acknowledge normally. Ask ONE question about a major initiative under this topic that failed or faced a severe crisis. Focus on recovery, pressure, and turnaround leadership.",
-            4: "[CRITICAL INSTRUCTION] TOPIC 3 (STAKEHOLDER INFLUENCE). MOVE TO A THIRD, DIFFERENT EXPERIENCE. Ask Question 1: Ask ONE question about their interaction with external boards, cross-functional CXOs, or high-stakes negotiations.",
-            5: "[CRITICAL INSTRUCTION] TOPIC 3 (ETHICS & JUDGMENT). Ask Question 2: Ask ONE question regarding an ethical dilemma, conflict of interest, or high-stakes integrity decision they had to make in that role.",
-            6: "[CRITICAL INSTRUCTION] TOPIC 4 (CAREER PATTERN VALIDATION). Look across their earliest roles. Ask Question 1: What early career experience most significantly shaped their executive approach today?",
-            7: "[CRITICAL INSTRUCTION] TOPIC 4 (REFLECTION & MATURITY). Ask Question 2 (FINAL EXAM): What specific leadership principle, philosophy, or painful lesson has most influenced how they make strategic decisions today?"
+            0: "[CRITICAL INSTRUCTION] Phase 1: RECENT EXPERIENCE. Ask Question 1. Look at 'Work Experience #1' in the context. Ask a highly specific technical question about their core mandate, architecture, or scale in that role. Do NOT mention projects yet.",
+            1: "[CRITICAL INSTRUCTION] Phase 1: RECENT EXPERIENCE. Ask Question 2. Acknowledge neutrally. Ask ONE deep follow-up question about the hardest tradeoff, failure, or impact achieved in that EXACT SAME role.",
+            2: "[CRITICAL INSTRUCTION] Phase 2: PREVIOUS EXPERIENCE. Ask Question 3. Move to 'Work Experience #2' (if it exists, otherwise find a new angle on Experience #1). Ask a specific question regarding their team, technical challenges, or execution.",
+            3: "[CRITICAL INSTRUCTION] Phase 2: PREVIOUS EXPERIENCE. Ask Question 4. Ask ONE follow-up on this second experience. Focus on metrics, architecture, or a specific crisis they resolved.",
+            4: "[CRITICAL INSTRUCTION] Phase 3: PROJECTS. Ask Question 5. Look at 'Key Projects #1' in the context. Pick their most complex project. Ask a deep question about the system design, algorithms, or the specific tech stack they used to build it.",
+            5: "[CRITICAL INSTRUCTION] Phase 3: PROJECTS. Ask Question 6. Ask ONE follow-up on that SAME project. Focus on performance bottlenecks, deployment challenges, or why they chose that specific architecture.",
+            6: "[CRITICAL INSTRUCTION] Phase 4: PROJECTS / SKILLS. Ask Question 7. Move to 'Key Projects #2' (if it exists). Ask a practical question about how they built it. IF they don't have a second project, look at their 'Top Skills' and ask a real-world scenario question about one of those skills.",
+            7: "[CRITICAL INSTRUCTION] Phase 5: CORE SKILL STRESS-TEST. Ask Question 8 (FINAL QUESTION). Pick ONE specific, highly technical skill from their 'Top Skills' list (e.g., Python, AWS, ML). Ask a tough, advanced-level question to stress-test their actual depth in this skill."
         }
         return instructions.get(self.question_count, "[CRITICAL INSTRUCTION] Keep it brief, ask one final specific question.")
 
@@ -310,26 +310,33 @@ class Brain:
                 recent_roles = exp.get("recent_roles")
                 if not isinstance(recent_roles, list): recent_roles = []
                 
-                top_experience = "Not Specified"
-                if len(recent_roles) > 0:
-                    top_role = recent_roles[0]
-                    if isinstance(top_role, dict):
-                        title = top_role.get('title', 'Unknown')
-                        company = top_role.get('company', 'Unknown')
-                        desc = top_role.get('description', '')
-                        top_experience = f"{title} at {company}: {desc}"
-                    else:
-                        top_experience = str(top_role)
+                # NEW: Parse Projects
+                projects_list = self.candidate_json.get("projects", [])
+                if not isinstance(projects_list, list): projects_list = []
+                
+                formatted_projects = ""
+                for idx, proj in enumerate(projects_list[:2]): # Grab top 2 projects
+                    name = proj.get("name", "Unknown")
+                    desc = proj.get("description", "")
+                    tech = ", ".join(proj.get("technologies", []))
+                    formatted_projects += f"\n  {idx+1}. {name} (Tech: {tech}) - {desc}"
+
+                formatted_roles = ""
+                for idx, role in enumerate(recent_roles[:2]): # Grab top 2 roles
+                    title = role.get("title", "Role")
+                    comp = role.get("company", "Company")
+                    desc = role.get("description", "")
+                    formatted_roles += f"\n  {idx+1}. {title} at {comp}: {desc}"
 
                 candidate_summary = f"""
 [MANDATORY CANDIDATE CONTEXT FROM RESUME]
-- Name: {full_name}
-- Headline: {headline} ({years} years experience)
-- Technical Skills: {tech_skills}
-- Key Recent Experience: {top_experience}
+- Name: {full_name} ({years} years experience)
+- Top Skills: {tech_skills}
+- Work Experience:{formatted_roles}
+- Key Projects:{formatted_projects if formatted_projects else ' None specified'}
 """
                 system_content += f"\n\n{candidate_summary}\n\n"
-                system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding their 'Key Recent Experience' listed above. Do not ask generic questions."
+                system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question. Do not ask generic questions."
             except Exception as parse_e:
                 print(f"[Brain Error] Failed to safely parse JSON into prompt: {parse_e}")
                 # Fails safely, system_content remains intact

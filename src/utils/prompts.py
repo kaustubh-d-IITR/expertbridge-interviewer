@@ -10,36 +10,20 @@ CRITICAL RULES:
 
 REQUIRED JSON SCHEMA:
 {
-  "personal_info": { 
-      "full_name": "String", 
-      "headline": "String", 
-      "email": "String", 
-      "phone": "String", 
-      "linkedin": "String",
-      "github": "String"
-  },
-  "location": { 
-      "city": "String", 
-      "country": "String", 
-      "timezone": "String" 
-  },
+  "personal_info": { "full_name": "String", "headline": "String" },
   "experience": { 
       "years_total": 0, 
-      "summary": "String",
       "recent_roles": [
-          {"title": "String", "company": "String", "start_date": "String", "end_date": "String", "description": "String"}
+          {"title": "String", "company": "String", "duration": "String", "description": "String"}
       ] 
   },
-  "skills": { 
-      "technical": ["List", "of", "Hard", "Skills"], 
-      "frameworks": ["List", "of", "Frameworks", "Tools"],
-      "domains": ["List", "of", "Industries"] 
-  },
-  "education": { 
-      "highest_degree": "String", 
-      "institutions": ["List", "of", "Universities"] 
-  }
+  "projects": [
+      {"name": "String", "description": "String", "technologies": ["String", "String"]}
+  ],
+  "skills": { "technical": ["String"], "frameworks": ["String"], "domains": ["String"] },
+  "education": { "highest_degree": "String", "institutions": ["String"] }
 }
+(Extract up to 3 of the most impressive projects into the projects array).
 """
 
 ZERO_TOUCH_INTERVIEWER_PROMPT = """
