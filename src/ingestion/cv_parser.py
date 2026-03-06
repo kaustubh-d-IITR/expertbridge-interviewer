@@ -51,57 +51,57 @@ def extract_profile_to_json(resume_text, brain_instance):
             {"role": "user", "content": f"EXTRACT FROM THIS RESUME:\n\n{resume_text}"}
         ]
         
+        raw_text = ""
         try:
-            # First attempt: Standard strict JSON extraction (GPT-4 / GPT-4o)
-            response = brain_instance.client.chat.completions.create(
-                model=brain_instance.deployment_name,
-                messages=messages,
-                temperature=0.1, # Lower temperature for extraction accuracy
-                response_format={"type": "json_object"}
-            )
-        except Exception as e:
-            err_str = str(e).lower()
-            # If the model complains about temperature or unsupported parameters (O1 models)
-            if "temperature" in err_str or "unsupported" in err_str or "parameter" in err_str:
-                print(f"[Parser Debug] Model rejected parameters. Retrying in O1 compatibility mode...")
-                # Second attempt: Strip temperature and response_format
+            # ATTEMPT 1: Standard GPT-4o configuration
+            try:
+                response = brain_instance.client.chat.completions.create(
+                    model=brain_instance.deployment_name,
+                    messages=messages,
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
+                )
+                raw_text = response.choices[0].message.content
+            except Exception as api_err:
+                print(f"[Parser] Standard call failed: {api_err}. Retrying in minimal compatibility mode...")
+                # ATTEMPT 2: O1 / Reasoning model compatibility (No temp, no response_format)
                 response = brain_instance.client.chat.completions.create(
                     model=brain_instance.deployment_name,
                     messages=messages
                 )
-            else:
-                raise e
-        
-        raw_json = response.choices[0].message.content.strip()
+                raw_text = response.choices[0].message.content
 
-        # Robustly parse JSON to handle markdown wrappers
-        profile_json = parse_llm_json(raw_json)
-        
-        if not profile_json:
-            raise ValueError("Failed to parse valid JSON from LLM response.")
+            # CLEANING: Strip Markdown backticks
+            cleaned_text = re.sub(r'^```(?:json)?\n?|```$', '', raw_text.strip(), flags=re.MULTILINE).strip()
             
-        # Save JSON locally for debugging
-        os.makedirs("expert_jsons", exist_ok=True)
-        try:
-            candidate_name = profile_json.get("personal_info", {}).get("full_name", "Unknown_Candidate")
-            # Remove invalid filename characters
-            safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', candidate_name)
-            file_path = os.path.join("expert_jsons", f"{safe_name}.json")
+            profile_json = json.loads(cleaned_text)
             
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(profile_json, f, indent=4)
-            print(f"[DEBUG] Successfully saved candidate profile to {file_path}")
-        except Exception as e:
-            print(f"[ERROR] Failed to save JSON locally: {e}")
+            # Save JSON locally for debugging
+            os.makedirs("expert_jsons", exist_ok=True)
+            try:
+                candidate_name = profile_json.get("personal_info", {}).get("full_name", "Unknown_Candidate")
+                safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', candidate_name)
+                file_path = os.path.join("expert_jsons", f"{safe_name}.json")
+                
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(profile_json, f, indent=4)
+                print(f"[DEBUG] Successfully saved candidate profile to {file_path}")
+            except Exception as e:
+                print(f"[ERROR] Failed to save JSON locally: {e}")
 
-        print(f"[DEBUG] Extracted Candidate JSON: {json.dumps(profile_json, indent=2)}")
-        print(f"[Parser] Successfully extracted profile for: {profile_json.get('personal_info', {}).get('full_name', 'Unknown')}")
-        return profile_json
+            print(f"[DEBUG] Extracted Candidate JSON: {json.dumps(profile_json, indent=2)}")
+            print(f"[Parser] Successfully extracted profile for: {profile_json.get('personal_info', {}).get('full_name', 'Unknown')}")
+            return profile_json
+            
+        except Exception as final_e:
+            print(f"[ERROR] LLM Evaluation/Parsing failed final wrapper: {final_e}")
+            raise final_e
+            
     except Exception as e:
         print(f"[ERROR] Profile extraction failed: {e}")
         # Return a clear error placeholder matching the nested schema
         return {
-            "personal_info": {"full_name": "EXTRACTION_FAILED", "headline": "Extraction Error"},
+            "personal_info": {"full_name": "EXTRACTION_FAILED", "headline": f"Error: {str(e)}"},
             "experience": {"recent_roles": []},
             "skills": {"technical": []},
             "education": {"institutions": []}
