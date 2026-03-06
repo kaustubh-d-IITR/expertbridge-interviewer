@@ -4,6 +4,20 @@ import os
 import re
 # Cache Buster v4.5
 
+def parse_llm_json(raw_text):
+    """Robustly strips markdown and extracts JSON from LLM output."""
+    try:
+        # Try direct parsing first
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        # Strip markdown backticks
+        cleaned = re.sub(r'```(?:json)?', '', raw_text).strip()
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            print(f"[ERROR] Final JSON parsing failed on: {cleaned[:100]}...")
+            return None
+
 def parse_cv(file):
     """
     Extracts raw text from the uploaded PDF file.
@@ -43,9 +57,13 @@ def extract_profile_to_json(resume_text, brain_instance):
         )
         
         raw_json = response.choices[0].message.content.strip()
-        # Ensure it's valid JSON
-        profile_json = json.loads(raw_json)
         
+        # Robustly parse JSON to handle markdown wrappers
+        profile_json = parse_llm_json(raw_json)
+        
+        if not profile_json:
+            raise ValueError("Failed to parse valid JSON from LLM response.")
+            
         # Save JSON locally for debugging
         os.makedirs("expert_jsons", exist_ok=True)
         try:
@@ -65,13 +83,10 @@ def extract_profile_to_json(resume_text, brain_instance):
         return profile_json
     except Exception as e:
         print(f"[ERROR] Profile extraction failed: {e}")
-        # Return a minimal placeholder on failure using the new schema
+        # Return a clear error placeholder matching the nested schema
         return {
-            "full_name": "Candidate",
-            "current_role": "Expert",
-            "years_of_experience": "N/A",
-            "top_skills": [],
-            "industries": [],
-            "key_project": "Not Specified",
-            "key_experience": "Not Specified"
+            "personal_info": {"full_name": "EXTRACTION_FAILED", "headline": "Extraction Error"},
+            "experience": {"recent_roles": []},
+            "skills": {"technical": []},
+            "education": {"institutions": []}
         }
