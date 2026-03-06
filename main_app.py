@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.10 (Nested Extraction Debug 12:25)
+# ExpertBridge AI Interviewer - v4.11 (JSON UI Viewer Debug 12:30)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.10 (12:25)")
+    st.sidebar.caption("Deployment Version: v4.11 (12:30)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -349,6 +349,14 @@ def main():
 
         # Debug Logs (Moved to bottom to ensure it captures current turn errors)
         st.divider()
+        
+        with st.expander("📄 Extracted Resume JSON (Debug)"):
+            candidate_data = st.session_state.get("candidate_json") or st.session_state.get("candidate_profile")
+            if candidate_data:
+                st.json(candidate_data)
+            else:
+                st.info("No resume JSON extracted yet. Please upload a resume.")
+                
         with st.expander("🛠️ System Logs (Debug)", expanded=False):
             if "debug_logs" in st.session_state:
                 st.text(st.session_state.debug_logs)
