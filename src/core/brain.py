@@ -289,62 +289,78 @@ class Brain:
 
     def _build_conversation_messages(self, user_input: str, elapsed_time: float) -> list:
         messages = []
-        
         system_content = self._get_static_system_prompt()
         
+        # 1. BULLETPROOF JSON PARSING ARMOR
         if self.candidate_json:
-            # Safely parse nested dictionaries
-            p_info = self.candidate_json.get("personal_info", {})
-            exp = self.candidate_json.get("experience", {})
-            skills = self.candidate_json.get("skills", {})
-            
-            full_name = p_info.get("full_name", "Candidate")
-            headline = p_info.get("headline", "Not Specified")
-            years = exp.get("years_total", 0)
-            tech_skills = ", ".join(skills.get("technical", []))
-            recent_roles = exp.get("recent_roles", [])
-            
-            # Grab the most recent role for the opening question context
-            top_experience = "Not Specified"
-            if recent_roles and len(recent_roles) > 0:
-                top_role = recent_roles[0]
-                top_experience = f"{top_role.get('title')} at {top_role.get('company')}: {top_role.get('description')}"
+            try:
+                p_info = self.candidate_json.get("personal_info") or {}
+                exp = self.candidate_json.get("experience") or {}
+                skills = self.candidate_json.get("skills") or {}
+                
+                full_name = p_info.get("full_name", "Candidate")
+                headline = p_info.get("headline", "Not Specified")
+                years = exp.get("years_total", 0)
+                
+                # Safely handle lists that might be returned as None by the LLM
+                tech_list = skills.get("technical")
+                if not isinstance(tech_list, list): tech_list = []
+                tech_skills = ", ".join([str(x) for x in tech_list])
+                
+                recent_roles = exp.get("recent_roles")
+                if not isinstance(recent_roles, list): recent_roles = []
+                
+                top_experience = "Not Specified"
+                if len(recent_roles) > 0:
+                    top_role = recent_roles[0]
+                    if isinstance(top_role, dict):
+                        title = top_role.get('title', 'Unknown')
+                        company = top_role.get('company', 'Unknown')
+                        desc = top_role.get('description', '')
+                        top_experience = f"{title} at {company}: {desc}"
+                    else:
+                        top_experience = str(top_role)
 
-            candidate_summary = f"""
-            [MANDATORY CANDIDATE CONTEXT FROM RESUME]
-            - Name: {full_name}
-            - Headline: {headline} ({years} years experience)
-            - Technical Skills: {tech_skills}
-            - Key Recent Experience: {top_experience}
-            """
-            
-            system_content += f"\n\n{candidate_summary}\n\n"
-            system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding their 'Key Recent Experience' listed above. Do not ask generic questions."
+                candidate_summary = f"""
+[MANDATORY CANDIDATE CONTEXT FROM RESUME]
+- Name: {full_name}
+- Headline: {headline} ({years} years experience)
+- Technical Skills: {tech_skills}
+- Key Recent Experience: {top_experience}
+"""
+                system_content += f"\n\n{candidate_summary}\n\n"
+                system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding their 'Key Recent Experience' listed above. Do not ask generic questions."
+            except Exception as parse_e:
+                print(f"[Brain Error] Failed to safely parse JSON into prompt: {parse_e}")
+                # Fails safely, system_content remains intact
 
         messages.append({"role": "system", "content": system_content})
         
-        if not self.candidate_json and self.interview_strategy:
-            messages.append({"role": "system", "content": f"[EXPERT PROFILE & STRATEGY]\n{self.interview_strategy}"})
-        
-        # Inject Job/Domain Context
         if hasattr(self, 'job_context') and self.job_context:
-            context_str = json.dumps(self.job_context, indent=2)
-            messages.append({"role": "system", "content": f"[DOMAIN KNOWLEDGE / JOB CONTEXT]\nUse this context to ask specific, grounded questions:\n{context_str}"})
+            try:
+                context_str = json.dumps(self.job_context, indent=2)
+                messages.append({"role": "system", "content": f"[DOMAIN KNOWLEDGE / JOB CONTEXT]\n{context_str}"})
+            except: pass
 
-        # Time Management Prompts
-        if elapsed_time > 780: # > 13 Minutes
-             messages.append({"role": "system", "content": "[CRITICAL TIME WARNING] We are at the 13-minute mark (2 mins left). If you haven't yet, ask ONE final question. If the candidate just answered your final question, you MUST say 'Thank you for your time', provide a brief positive closing, and say Goodbye."})
-        elif elapsed_time > 600: # > 10 Minutes
-            messages.append({"role": "system", "content": "[TIME CHECK] You have 5 minutes left. Start moving toward conclusion."})
+        if elapsed_time > 780:
+             messages.append({"role": "system", "content": "[CRITICAL TIME WARNING] We are at the time limit. Ask ONE final concluding question."})
+        elif elapsed_time > 600:
+            messages.append({"role": "system", "content": "[TIME CHECK] 5 minutes left. Move toward conclusion."})
             
         messages.extend(self.conversation_history)
         
-        # FEATURE: Dynamic State Injection (Forces LLM to not get stuck)
+        # 2. O1 MODEL COMPATIBILITY FIX
+        # Strict LLMs reject 'system' roles placed after 'user'/'assistant' roles.
+        # We must inject the dynamic instruction seamlessly into the user_input payload.
         dynamic_cmd = self._get_dynamic_topic_instruction()
+        final_user_payload = user_input
+        
         if dynamic_cmd:
-            messages.append({"role": "system", "content": dynamic_cmd})
+            # Wrap the instruction so the AI reads it as a system directive, not user speech
+            final_user_payload = f"[{dynamic_cmd}]\n\nCandidate's Spoken Answer:\n{user_input}"
             
-        messages.append({"role": "user", "content": user_input})
+        messages.append({"role": "user", "content": final_user_payload})
+        
         return messages
     
     def _get_static_system_prompt(self) -> str:
