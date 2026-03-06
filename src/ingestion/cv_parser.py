@@ -46,18 +46,34 @@ def extract_profile_to_json(resume_text, brain_instance):
     
     print("[Parser] Extracting profile via AI...")
     try:
-        response = brain_instance.client.chat.completions.create(
-            model=brain_instance.deployment_name,
-            messages=[
-                {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
-                {"role": "user", "content": f"EXTRACT FROM THIS RESUME:\n\n{resume_text}"}
-            ],
-            temperature=0.1, # Lower temperature for extraction accuracy
-            response_format={"type": "json_object"}
-        )
+        messages = [
+            {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+            {"role": "user", "content": f"EXTRACT FROM THIS RESUME:\n\n{resume_text}"}
+        ]
+        
+        try:
+            # First attempt: Standard strict JSON extraction (GPT-4 / GPT-4o)
+            response = brain_instance.client.chat.completions.create(
+                model=brain_instance.deployment_name,
+                messages=messages,
+                temperature=0.1, # Lower temperature for extraction accuracy
+                response_format={"type": "json_object"}
+            )
+        except Exception as e:
+            err_str = str(e).lower()
+            # If the model complains about temperature or unsupported parameters (O1 models)
+            if "temperature" in err_str or "unsupported" in err_str or "parameter" in err_str:
+                print(f"[Parser Debug] Model rejected parameters. Retrying in O1 compatibility mode...")
+                # Second attempt: Strip temperature and response_format
+                response = brain_instance.client.chat.completions.create(
+                    model=brain_instance.deployment_name,
+                    messages=messages
+                )
+            else:
+                raise e
         
         raw_json = response.choices[0].message.content.strip()
-        
+
         # Robustly parse JSON to handle markdown wrappers
         profile_json = parse_llm_json(raw_json)
         
