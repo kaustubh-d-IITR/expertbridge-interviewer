@@ -1,5 +1,7 @@
 from pypdf import PdfReader
 import json
+import os
+import re
 # Cache Buster v4.5
 
 def parse_cv(file):
@@ -43,8 +45,23 @@ def extract_profile_to_json(resume_text, brain_instance):
         raw_json = response.choices[0].message.content.strip()
         # Ensure it's valid JSON
         profile_json = json.loads(raw_json)
+        
+        # Save JSON locally for debugging
+        os.makedirs("expert_jsons", exist_ok=True)
+        try:
+            candidate_name = profile_json.get("personal_info", {}).get("full_name", "Unknown_Candidate")
+            # Remove invalid filename characters
+            safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', candidate_name)
+            file_path = os.path.join("expert_jsons", f"{safe_name}.json")
+            
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(profile_json, f, indent=4)
+            print(f"[DEBUG] Successfully saved candidate profile to {file_path}")
+        except Exception as e:
+            print(f"[ERROR] Failed to save JSON locally: {e}")
+
         print(f"[DEBUG] Extracted Candidate JSON: {json.dumps(profile_json, indent=2)}")
-        print(f"[Parser] Successfully extracted profile for: {profile_json.get('full_name', 'Unknown')}")
+        print(f"[Parser] Successfully extracted profile for: {profile_json.get('personal_info', {}).get('full_name', 'Unknown')}")
         return profile_json
     except Exception as e:
         print(f"[ERROR] Profile extraction failed: {e}")

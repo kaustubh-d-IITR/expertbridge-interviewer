@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.9 (Extraction Optimization 23:50)
+# ExpertBridge AI Interviewer - v4.10 (Nested Extraction Debug 12:25)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.9 (23:50)")
+    st.sidebar.caption("Deployment Version: v4.10 (12:25)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -162,7 +162,7 @@ def main():
                     
                     # 4. Start Interview
                     st.session_state.orchestrator_v3.start_interview(
-                        candidate_profile.get("full_name", "Candidate"), 
+                        candidate_profile.get("personal_info", {}).get("full_name", "Candidate"), 
                         cv_text, 
                         st.session_state.get("current_job_context"),
                         mode=st.session_state.mode

@@ -1,23 +1,45 @@
 EXTRACTION_SYSTEM_PROMPT = """
-You are an expert technical recruiter AI. Your task is to read the raw text of a candidate's resume and extract their profile into a strict JSON object. 
+You are an expert Technical Recruiter and Resume Parser.
+Your task is to extract candidate details into a strict JSON format.
 
-CRITICAL INSTRUCTIONS FOR EXTRACTION:
-1. 'key_experience': Scan the "Experience" or "Work History" section. Identify their most recent or most senior role. Write a 2-sentence summary of their exact mandate, tech stack used, and measurable impact. DO NOT output "Not Specified" if they have any work history.
-2. 'key_project': Scan the "Projects" section. Identify the most technically complex or AI/Data heavy project. Write a 2-sentence summary of what it does and the tech stack used. DO NOT output "Not Specified" if they have any projects listed.
-3. 'top_skills': Extract an array of up to 7 of their most prominent technical skills, languages, or frameworks.
+CRITICAL RULES:
+1. Output MUST be valid JSON.
+2. "skills" must be a dictionary with "technical", "frameworks", and "domains" lists.
+3. "years_total" must be an integer.
+4. Do not invent information. If missing, use empty strings or lists.
 
-Required JSON Schema:
+REQUIRED JSON SCHEMA:
 {
-  "full_name": "Candidate Name",
-  "current_role": "Most recent job title",
-  "years_of_experience": "Total years (e.g. '2' or '3+')",
-  "top_skills": ["Skill1", "Skill2"],
-  "industries": ["Industry1", "Industry2"],
-  "key_experience": "Summary of top work experience...",
-  "key_project": "Summary of top project..."
+  "personal_info": { 
+      "full_name": "String", 
+      "headline": "String", 
+      "email": "String", 
+      "phone": "String", 
+      "linkedin": "String",
+      "github": "String"
+  },
+  "location": { 
+      "city": "String", 
+      "country": "String", 
+      "timezone": "String" 
+  },
+  "experience": { 
+      "years_total": 0, 
+      "summary": "String",
+      "recent_roles": [
+          {"title": "String", "company": "String", "start_date": "String", "end_date": "String", "description": "String"}
+      ] 
+  },
+  "skills": { 
+      "technical": ["List", "of", "Hard", "Skills"], 
+      "frameworks": ["List", "of", "Frameworks", "Tools"],
+      "domains": ["List", "of", "Industries"] 
+  },
+  "education": { 
+      "highest_degree": "String", 
+      "institutions": ["List", "of", "Universities"] 
+  }
 }
-
-Return ONLY the raw JSON object. Do not include markdown formatting like ```json.
 """
 
 ZERO_TOUCH_INTERVIEWER_PROMPT = """

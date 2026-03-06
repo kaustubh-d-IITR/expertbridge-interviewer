@@ -291,10 +291,36 @@ class Brain:
         messages = []
         
         system_content = self._get_static_system_prompt()
-        if self.candidate_json:
-            system_content += f"\n\n[MANDATORY CANDIDATE CONTEXT FROM RESUME]\n{json.dumps(self.candidate_json, indent=2)}\n\n"
-            system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding the 'key_project' or 'key_experience' listed above. Do not ask generic questions."
         
+        if self.candidate_json:
+            # Safely parse nested dictionaries
+            p_info = self.candidate_json.get("personal_info", {})
+            exp = self.candidate_json.get("experience", {})
+            skills = self.candidate_json.get("skills", {})
+            
+            full_name = p_info.get("full_name", "Candidate")
+            headline = p_info.get("headline", "Not Specified")
+            years = exp.get("years_total", 0)
+            tech_skills = ", ".join(skills.get("technical", []))
+            recent_roles = exp.get("recent_roles", [])
+            
+            # Grab the most recent role for the opening question context
+            top_experience = "Not Specified"
+            if recent_roles and len(recent_roles) > 0:
+                top_role = recent_roles[0]
+                top_experience = f"{top_role.get('title')} at {top_role.get('company')}: {top_role.get('description')}"
+
+            candidate_summary = f"""
+            [MANDATORY CANDIDATE CONTEXT FROM RESUME]
+            - Name: {full_name}
+            - Headline: {headline} ({years} years experience)
+            - Technical Skills: {tech_skills}
+            - Key Recent Experience: {top_experience}
+            """
+            
+            system_content += f"\n\n{candidate_summary}\n\n"
+            system_content += "DIRECTIVE: Your very first question MUST be a specific, deep technical question regarding their 'Key Recent Experience' listed above. Do not ask generic questions."
+
         messages.append({"role": "system", "content": system_content})
         
         if not self.candidate_json and self.interview_strategy:
@@ -446,7 +472,7 @@ Return ONLY valid JSON (Do NOT change keys):
     def get_opening_message(self) -> str:
         if self.candidate_json:
             # Force the LLM to generate the first question
-            first_prompt = "The candidate has just joined the call. Look at their [MANDATORY CANDIDATE CONTEXT FROM RESUME]. Ask the first highly specific technical question about their Key Project right now. No pleasantries."
+            first_prompt = "The candidate has just joined the call. Look at their [MANDATORY CANDIDATE CONTEXT FROM RESUME]. Ask the first highly specific technical question about their Key Recent Experience right now. No pleasantries."
             return self.generate_spoken_response(first_prompt, 0.0)
 
         if not self.expert_profile:
