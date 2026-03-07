@@ -466,18 +466,41 @@ Return ONLY valid JSON (Do NOT change keys):
   "suggested_follow_up": "..."
 }}"""
         try:
+            import re
             analysis_model = os.getenv("AZURE_OPENAI_ANALYSIS_MODEL", self.deployment_name)
-            response = self.client.chat.completions.create(
-                model=analysis_model,
-                messages=[{"role": "user", "content": analysis_prompt}],
-                response_format={"type": "json_object"},
-                temperature=0.3
-            )
-            content = response.choices[0].message.content
-            if content: return json.loads(content)
-            else: return self._get_empty_analysis()
-        except Exception:
-            return self._get_empty_analysis()
+            raw_text = ""
+            
+            try:
+                # ATTEMPT 1: Standard JSON mode (for GPT-4o)
+                response = self.client.chat.completions.create(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": analysis_prompt}],
+                    response_format={"type": "json_object"},
+                    temperature=0.3
+                )
+                raw_text = response.choices[0].message.content
+            except Exception as api_err:
+                print(f"[Analysis Debug] Standard call failed: {api_err}. Retrying in minimal mode...")
+                # ATTEMPT 2: O1 / Reasoning model compatibility (No temp, no response_format)
+                response = self.client.chat.completions.create(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": analysis_prompt}]
+                )
+                raw_text = response.choices[0].message.content
+
+            # CLEANING: Strip Markdown backticks (```json ... ```)
+            if raw_text:
+                cleaned_text = re.sub(r'^```[a-zA-Z]*\n*', '', raw_text.strip())
+                cleaned_text = re.sub(r'\n*```$', '', cleaned_text).strip()
+                return json.loads(cleaned_text)
+            else:
+                return self._get_empty_analysis()
+        except Exception as e:
+            error_msg = str(e)
+            print(f"[Brain Error] Final Analysis Failure: {error_msg}")
+            fallback = self._get_empty_analysis()
+            fallback["depth_reasoning"] = f"CRITICAL PARSE ERROR: {error_msg}"
+            return fallback
             
     def _get_empty_analysis(self):
         return {
