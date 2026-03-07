@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.18 (Bulletproof Scoring Analyzer 17:25)
+# ExpertBridge AI Interviewer - v4.19 (Fixing Termination & Typecasting 18:05)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -29,7 +29,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.18 (17:25)")
+    st.sidebar.caption("Deployment Version: v4.19 (Fixing Termination & Typecasting 18:05)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -295,57 +295,54 @@ def main():
                 st.error("Termination Reason: Conduct Violation or Time Exceeded with no answers.")
                 
              st.warning("Please reset the interview to try again (if allowed).")
-             st.stop()
-             
+             # REMOVED st.stop() to allow the audio Autoplay to evaluate at the bottom.
 
+        else:
+            # Audio Input Options (Only shown if NOT terminated)
+            audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
+            audio_value = st.audio_input("Record your answer", key=audio_key)
 
-        # Audio Input
-        audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
-        audio_value = st.audio_input("Record your answer", key=audio_key)
+            if audio_value:
+                 with st.spinner("Listening..."):
+                     # 1. Extract raw bytes immediately (User Fix v4.1)
+                     audio_bytes = audio_value.read()
+                     mime_type = audio_value.type
+                     
+                     import time
+                     elapsed_seconds = time.time() - st.session_state.get("start_time", time.time())
+                     
+                     settings = {
+                        "input_language": st.session_state.get("input_language", "English"),
+                        "response_language": st.session_state.get("response_language", "English"),
+                        "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
+                        "job_context": st.session_state.get("current_job_context", None),
+                        "elapsed_time": elapsed_seconds
+                     }
 
-        if audio_value:
-             with st.spinner("Listening..."):
-                 # 1. Extract raw bytes immediately (User Fix v4.1)
-                 audio_bytes = audio_value.read()
-                 mime_type = audio_value.type
-                 
-                 import time
-                 elapsed_seconds = time.time() - st.session_state.get("start_time", time.time())
-                 
-                 settings = {
-                    "input_language": st.session_state.get("input_language", "English"),
-                    "response_language": st.session_state.get("response_language", "English"),
-                    "voice_model": st.session_state.get("voice_model", "aura-asteria-en"),
-                    "job_context": st.session_state.get("current_job_context", None),
-                    "elapsed_time": elapsed_seconds
-                 }
-
-                 # 2. Pass bytes (NOT the file object) to the orchestrator
-                 user_text, ai_text, ai_audio, _ = st.session_state.orchestrator_v3.run_interview_turn(
-                     audio_bytes, 
-                     mime_type,
-                     settings=settings
-                 )
-                 
-                 # 3. CRITICAL: Clear the audio input widget by bumping the key count
-                 # This prevents Streamlit from re-processing the same audio on the next rerun
-                 st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
-                 
-                 # Capture and Clear last error for log persistence
-                 has_new_error = False
-                 if hasattr(st.session_state.orchestrator_v3, "last_error") and st.session_state.orchestrator_v3.last_error:
-                     st.session_state.debug_logs += f"\n[ERROR] {st.session_state.orchestrator_v3.last_error}"
-                     st.session_state.orchestrator_v3.last_error = None
-                     has_new_error = True
-                 
-                 if user_text:
-                     st.session_state.chat_history.append(("user", user_text, None))
-                     st.session_state.chat_history.append(("assistant", ai_text, ai_audio))
-                     st.rerun()
-                 else:
-                     st.warning("I couldn't hear that. Please try speaking again/louder.")
-                     # No mandatory rerun here - the key bump and script finish will refresh the UI naturally
-                     # and the input widget will be cleared, stopping the infinite loop.
+                     # 2. Pass bytes (NOT the file object) to the orchestrator
+                     user_text, ai_text, ai_audio, _ = st.session_state.orchestrator_v3.run_interview_turn(
+                         audio_bytes, 
+                         mime_type,
+                         settings=settings
+                     )
+                     
+                     # 3. CRITICAL: Clear the audio input widget by bumping the key count
+                     # This prevents Streamlit from re-processing the same audio on the next rerun
+                     st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
+                     
+                     # Capture and Clear last error for log persistence
+                     has_new_error = False
+                     if hasattr(st.session_state.orchestrator_v3, "last_error") and st.session_state.orchestrator_v3.last_error:
+                         st.session_state.debug_logs += f"\n[ERROR] {st.session_state.orchestrator_v3.last_error}"
+                         st.session_state.orchestrator_v3.last_error = None
+                         has_new_error = True
+                     
+                     if user_text:
+                         st.session_state.chat_history.append(("user", user_text, None))
+                         st.session_state.chat_history.append(("assistant", ai_text, ai_audio))
+                         st.rerun()
+                     else:
+                         st.warning("I couldn't hear that. Please try speaking again/louder.")
 
         # Debug Logs (Moved to bottom to ensure it captures current turn errors)
         st.divider()

@@ -492,7 +492,21 @@ Return ONLY valid JSON (Do NOT change keys):
             if raw_text:
                 cleaned_text = re.sub(r'^```[a-zA-Z]*\n*', '', raw_text.strip())
                 cleaned_text = re.sub(r'\n*```$', '', cleaned_text).strip()
-                return json.loads(cleaned_text)
+                data = json.loads(cleaned_text)
+                
+                # AGGRESSIVE TYPE-CASTING: Force all score metrics to integers
+                return {
+                    "depth_score": int(data.get("depth_score", 3)),
+                    "thinking_score": int(data.get("thinking_score", 3)),
+                    "fit_score": int(data.get("fit_score", 3)),
+                    "overall_score": int(data.get("overall_score", 60)),
+                    "depth_reasoning": str(data.get("depth_reasoning", "N/A")),
+                    "thinking_reasoning": str(data.get("thinking_reasoning", "N/A")),
+                    "fit_reasoning": str(data.get("fit_reasoning", "N/A")),
+                    "red_flags": data.get("red_flags", []),
+                    "key_strengths": data.get("key_strengths", []),
+                    "suggested_follow_up": str(data.get("suggested_follow_up", ""))
+                }
             else:
                 return self._get_empty_analysis()
         except Exception as e:
