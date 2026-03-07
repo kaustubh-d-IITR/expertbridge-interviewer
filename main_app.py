@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.19 (Fixing Termination & Typecasting 18:05)
+# ExpertBridge AI Interviewer - v4.20 (Live Evaluation Dashboard 22:30)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -24,12 +24,72 @@ if not (os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")) and no
 # Page Config (This will be moved inside main() as per instruction)
 # st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🎤")
 
+# --- LIVE SCORING DASHBOARD ---
+def render_live_scoring_dashboard():
+    """Renders a beautiful, real-time scoring dashboard based on the latest AI evaluation."""
+    if "orchestrator_v3" not in st.session_state or not getattr(st.session_state.orchestrator_v3, "scores", []):
+        return
+
+    scores = st.session_state.orchestrator_v3.scores
+    latest_score = scores[-1]
+    
+    # Calculate running average
+    running_avg = sum(s.get("overall_score", 60) for s in scores) / len(scores)
+    
+    # Calculate delta (difference from previous average to show trend)
+    if len(scores) > 1:
+        prev_avg = sum(s.get("overall_score", 60) for s in scores[:-1]) / (len(scores) - 1)
+        trend_delta = round(running_avg - prev_avg, 1)
+    else:
+        trend_delta = None
+
+    st.markdown("---")
+    st.markdown("### 📊 Live Interview Telemetry")
+    
+    # Custom CSS for a sleek look
+    st.markdown("""
+        <style>
+        [data-testid="stMetricValue"] { font-size: 1.8rem; font-weight: 700; color: #4F8BF9; }
+        .red-flag { color: #ff4b4b; font-weight: bold; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Top Row: Overall Metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(label="🏆 Running Average", value=f"{running_avg:.1f}/100", delta=trend_delta)
+    with col2:
+        st.metric(label="🧠 Depth (Detail)", value=f"{latest_score.get('depth_score', 0)}/5")
+    with col3:
+        st.metric(label="⚙️ Thinking (Logic)", value=f"{latest_score.get('thinking_score', 0)}/5")
+    with col4:
+        st.metric(label="🗣️ Fit (Delivery)", value=f"{latest_score.get('fit_score', 0)}/5")
+
+    # Progress Bar based on running average
+    progress_val = max(0.0, min(1.0, running_avg / 100.0))
+    st.progress(progress_val)
+
+    # Collapsible AI Private Notes
+    with st.expander("🕵️♂️ AI Private Examiner Notes (Latest Answer)"):
+        st.markdown(f"**Depth Reasoning:** {latest_score.get('depth_reasoning', 'N/A')}")
+        st.markdown(f"**Thinking Reasoning:** {latest_score.get('thinking_reasoning', 'N/A')}")
+        
+        red_flags = latest_score.get("red_flags", [])
+        if red_flags and len(red_flags) > 0:
+            st.markdown(f"<span class='red-flag'>🚨 Red Flags Detected:</span> {', '.join(red_flags)}", unsafe_allow_html=True)
+        
+        follow_up = latest_score.get("suggested_follow_up", "")
+        if follow_up:
+            st.info(f"**Internal AI Pivot Strategy:** {follow_up}")
+    st.markdown("---")
+
+
 def main():
     # Page Config
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.19 (Fixing Termination & Typecasting 18:05)")
+    st.sidebar.caption("Deployment Version: v4.20 (Live Evaluation Dashboard 22:30)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -275,6 +335,9 @@ def main():
             st.rerun()
 
     elif st.session_state.interview_active:
+        
+        # Feature: Live Performance Dashboard
+        render_live_scoring_dashboard()
         
         # Display Chat History
         for sender, message, _ in st.session_state.chat_history:
