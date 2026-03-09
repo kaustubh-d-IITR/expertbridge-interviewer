@@ -446,11 +446,12 @@ You MUST output your response matching the strict JSON schema provided.
             # Using OpenAI SDK's native beta parsing for Pydantic Structured Outputs
             # This forces the LLM to return data that perfectly matches the ScoreCard class
             try:
+                # ATTEMPT 1: Pydantic Structured Outputs (No Temperature)
                 response = self.client.beta.chat.completions.parse(
                     model=analysis_model,
                     messages=[{"role": "user", "content": analysis_prompt}],
-                    response_format=ScoreCard,
-                    temperature=0.2
+                    response_format=ScoreCard
+                    # CRITICAL: Do NOT include temperature parameter here
                 )
                 
                 # The SDK automatically parses and validates it into the Pydantic object
@@ -459,14 +460,15 @@ You MUST output your response matching the strict JSON schema provided.
                 # Convert the Pydantic object back to a standard dictionary for the UI to consume
                 return score_card_obj.model_dump()
                 
-            except AttributeError:
-                # Fallback: If the user's specific Azure SDK version doesn't support .beta.parse,
-                # we force standard JSON and use Pydantic to validate the string manually.
+            except Exception as api_err:
+                err_str = str(api_err).lower()
+                print(f"[Analysis Debug] Beta Parse failed: {err_str}. Retrying standard mode...")
+                
+                # ATTEMPT 2: Fallback if O1 model rejects `response_format`
                 response = self.client.chat.completions.create(
                     model=analysis_model,
-                    messages=[{"role": "user", "content": analysis_prompt}],
-                    response_format={"type": "json_object"},
-                    temperature=0.2
+                    messages=[{"role": "user", "content": analysis_prompt}]
+                    # CRITICAL: No temperature, no response_format
                 )
                 raw_json = response.choices[0].message.content
                 import re
