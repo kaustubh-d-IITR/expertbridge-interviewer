@@ -1,8 +1,22 @@
 import os
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from openai import AzureOpenAI, OpenAI
+from pydantic import BaseModel, Field
+
+# Define the strict schema for the LLM to follow
+class ScoreCard(BaseModel):
+    depth_score: int = Field(description="Score from 1 to 5 for technical depth.")
+    thinking_score: int = Field(description="Score from 1 to 5 for structured reasoning.")
+    fit_score: int = Field(description="Score from 1 to 5 for communication and fit.")
+    overall_score: int = Field(description="Overall score from 0 to 100 based on the Crucible Framework.")
+    depth_reasoning: str = Field(description="1 sentence explaining the depth score.")
+    thinking_reasoning: str = Field(description="1 sentence explaining the thinking score.")
+    fit_reasoning: str = Field(description="1 sentence explaining the fit score.")
+    red_flags: List[str] = Field(description="List of detected red flags (e.g., evasion, buzzwords). Empty list if none.")
+    key_strengths: List[str] = Field(description="List of detected strengths. Empty list if none.")
+    suggested_follow_up: str = Field(description="A suggested follow-up strategy or question.")
 
 class Brain:
     """
@@ -419,96 +433,50 @@ EVALUATION CRITERIA (HIGH SIGNAL DETECTION):
 - **Amateur Signals**: Generic statements, buzzwords without depth, avoidance.
 
 INTERNAL BAYESIAN SCORING LOGIC:
-1. **DEPTH (1-5)**:
-   - 5: Multiple concrete examples, metrics, complexity handled.
-   - 4: Strong example with clear outcomes.
-   - 3: Adequate but limited depth.
-   - 2: Vague or theoretical.
-   - 1: No evidence / Fluff.
+1. **DEPTH (1-5)**: 5 (Multiple concrete examples), 4 (Strong example), 3 (Adequate), 2 (Vague), 1 (Fluff)
+2. **THICKING (1-5)**: 5 (Structured reasoning), 4 (Logical flow), 3 (Basic), 2 (Scattered), 1 (Incoherent)
+3. **FIT (1-5)**: 5 (Clear/confident), 4 (Professional), 3 (Acceptable), 2 (Hesitant), 1 (Poor)
+4. **OVERALL SCORE (0-100)**: Base on expertise credibility. Reward "Expert Signals".
 
-2. **THINKING (1-5)**:
-   - 5: Structured reasoning, trade-offs, clear decision logic.
-   - 4: Logical flow.
-   - 3: Basic reasoning.
-   - 2: Scattered / Hard to follow.
-   - 1: Incoherent.
-
-3. **FIT (1-5)**:
-   - 5: Clear, confident, concise, professional.
-   - 4: Professional.
-   - 3: Acceptable.
-   - 2: Hesitant or unclear.
-   - 1: Poor communication / rude.
-
-4. **OVERALL SCORE (0-100)**:
-   - Base on expertise credibility, information density, and confidence calibration.
-   - Reward "Expert Signals" heavily.
-
-5. **RED FLAGS**:
-   - Detect evasion, contradictions, defensiveness, or lack of ownership.
-
-6. **SUGGESTED FOLLOW-UP**:
-   - If Weak: Ask for a concrete example.
-   - If Strong: Ask about trade-offs or a harder scenario.
-   - If Ambiguous: Ask for clarification on their specific role.
-
-Return ONLY valid JSON (Do NOT change keys):
-{{
-  "depth_score": 1-5,
-  "thinking_score": 1-5,
-  "fit_score": 1-5,
-  "overall_score": 0-100,
-  "depth_reasoning": "...",
-  "thinking_reasoning": "...",
-  "fit_reasoning": "...",
-  "red_flags": [],
-  "key_strengths": [],
-  "suggested_follow_up": "..."
-}}"""
+You MUST output your response matching the strict JSON schema provided.
+"""
         try:
-            import re
             analysis_model = os.getenv("AZURE_OPENAI_ANALYSIS_MODEL", self.deployment_name)
-            raw_text = ""
             
+            # Using OpenAI SDK's native beta parsing for Pydantic Structured Outputs
+            # This forces the LLM to return data that perfectly matches the ScoreCard class
             try:
-                # ATTEMPT 1: Standard JSON mode (for GPT-4o)
+                response = self.client.beta.chat.completions.parse(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": analysis_prompt}],
+                    response_format=ScoreCard,
+                    temperature=0.2
+                )
+                
+                # The SDK automatically parses and validates it into the Pydantic object
+                score_card_obj = response.choices[0].message.parsed
+                
+                # Convert the Pydantic object back to a standard dictionary for the UI to consume
+                return score_card_obj.model_dump()
+                
+            except AttributeError:
+                # Fallback: If the user's specific Azure SDK version doesn't support .beta.parse,
+                # we force standard JSON and use Pydantic to validate the string manually.
                 response = self.client.chat.completions.create(
                     model=analysis_model,
                     messages=[{"role": "user", "content": analysis_prompt}],
                     response_format={"type": "json_object"},
-                    temperature=0.3
+                    temperature=0.2
                 )
-                raw_text = response.choices[0].message.content
-            except Exception as api_err:
-                print(f"[Analysis Debug] Standard call failed: {api_err}. Retrying in minimal mode...")
-                # ATTEMPT 2: O1 / Reasoning model compatibility (No temp, no response_format)
-                response = self.client.chat.completions.create(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": analysis_prompt}]
-                )
-                raw_text = response.choices[0].message.content
-
-            # CLEANING: Strip Markdown backticks (```json ... ```)
-            if raw_text:
-                cleaned_text = re.sub(r'^```[a-zA-Z]*\n*', '', raw_text.strip())
+                raw_json = response.choices[0].message.content
+                import re
+                cleaned_text = re.sub(r'^```[a-zA-Z]*\n*', '', raw_json.strip())
                 cleaned_text = re.sub(r'\n*```$', '', cleaned_text).strip()
-                data = json.loads(cleaned_text)
                 
-                # AGGRESSIVE TYPE-CASTING: Force all score metrics to integers
-                return {
-                    "depth_score": int(data.get("depth_score", 3)),
-                    "thinking_score": int(data.get("thinking_score", 3)),
-                    "fit_score": int(data.get("fit_score", 3)),
-                    "overall_score": int(data.get("overall_score", 60)),
-                    "depth_reasoning": str(data.get("depth_reasoning", "N/A")),
-                    "thinking_reasoning": str(data.get("thinking_reasoning", "N/A")),
-                    "fit_reasoning": str(data.get("fit_reasoning", "N/A")),
-                    "red_flags": data.get("red_flags", []),
-                    "key_strengths": data.get("key_strengths", []),
-                    "suggested_follow_up": str(data.get("suggested_follow_up", ""))
-                }
-            else:
-                return self._get_empty_analysis()
+                # Validate the raw dictionary explicitly through Pydantic
+                score_card_obj = ScoreCard.model_validate_json(cleaned_text)
+                return score_card_obj.model_dump()
+                
         except Exception as e:
             error_msg = str(e)
             print(f"[Brain Error] Final Analysis Failure: {error_msg}")
