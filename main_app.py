@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.25 (Phase 2: Manual Data Sync Termination 17:50)
+# ExpertBridge AI Interviewer - v4.26 (Phase 2: GDrive Traceback Logger 18:00)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -89,7 +89,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.25 (Phase 2: Manual Data Sync Termination 17:50)")
+    st.sidebar.caption("Deployment Version: v4.26 (Phase 2: GDrive Traceback Logger 18:00)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -403,22 +403,44 @@ def main():
              
              # Phase 2: Autonomous GDrive Upload on Termination
              if not st.session_state.get("audios_uploaded"):
-                 with st.spinner("☁️ Uploading interview recordings to secure cloud storage..."):
-                     try:
-                         from src.services.gdrive_uploader import upload_to_gdrive
-                         candidate_name = st.session_state.candidate_profile.get("personal_info", {}).get("full_name", "Unknown") if hasattr(st.session_state, "candidate_profile") and st.session_state.candidate_profile else "Candidate"
-                         
-                         for audio_data in st.session_state.get("audio_history_paths", []):
-                             upload_to_gdrive(
-                                 file_path=audio_data["path"],
-                                 candidate_name=candidate_name,
-                                 turn_number=audio_data["turn"],
-                                 speaker=audio_data["speaker"]
-                             )
-                         st.session_state.audios_uploaded = True
-                         st.success("✅ All audio files successfully backed up to Google Drive!")
-                     except Exception as e:
-                         st.error(f"Failed to backup audio recordings to GDrive: {e}")
+                 import traceback
+                 
+                 st.info("☁️ Uploading interview recordings to secure cloud storage...")
+                 
+                 try:
+                     # Dynamic import to catch module errors at execution time
+                     from src.services.gdrive_uploader import upload_to_gdrive
+                     
+                     candidate_name = st.session_state.candidate_profile.get("personal_info", {}).get("full_name", "Unknown") if hasattr(st.session_state, "candidate_profile") and st.session_state.candidate_profile else "Candidate"
+                     upload_success_count = 0
+                     
+                     for audio_data in st.session_state.get("audio_history_paths", []):
+                         success = upload_to_gdrive(
+                             file_path=audio_data["path"],
+                             candidate_name=candidate_name,
+                             turn_number=audio_data["turn"],
+                             speaker=audio_data["speaker"]
+                         )
+                         if success:
+                             upload_success_count += 1
+                             
+                     st.session_state.audios_uploaded = True
+                     st.success(f"✅ Successfully backed up {upload_success_count} audio files to Google Drive!")
+                     
+                 except Exception as e:
+                     st.session_state.audios_uploaded = True # Prevent infinite retry loops
+                     
+                     # Display the high-level error
+                     st.error(f"🚨 Failed to backup audio recordings to GDrive: {str(e)}")
+                     
+                     # Inject a deep-dive debug expander with the full traceback
+                     with st.expander("🛠️ View Detailed GDrive Error Logs"):
+                         full_traceback = traceback.format_exc()
+                         st.code(full_traceback, language="python")
+                         st.markdown("""
+                         **Debugging Hint:** If you see `ModuleNotFoundError`, it means the terminal running Streamlit does not have the package installed. 
+                         Ensure you have run `pip install google-api-python-client google-auth` in the **exact same environment** where you run `streamlit run`.
+                         """)
                          
              # REMOVED st.stop() to allow the audio Autoplay to evaluate at the bottom.
 
