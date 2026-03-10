@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.23 (Phase 1 UX: Fast Chat & Auto-Greeting 13:40)
+# ExpertBridge AI Interviewer - v4.24 (Phase 2: Permanent Audio Storage 16:50)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -89,7 +89,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.23 (Phase 1 UX: Fast Chat & Auto-Greeting 13:40)")
+    st.sidebar.caption("Deployment Version: v4.24 (Phase 2: Permanent Audio Storage 16:50)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -120,6 +120,14 @@ def main():
         st.session_state.cv_text = ""
     if "candidate_name" not in st.session_state:
         st.session_state.candidate_name = "Candidate"
+    if 'audio_key_count' not in st.session_state:
+        st.session_state.audio_key_count = 0
+    if 'audio_history_paths' not in st.session_state:
+        st.session_state.audio_history_paths = []
+    if 'audios_uploaded' not in st.session_state:
+        st.session_state.audios_uploaded = False
+        
+    os.makedirs("temp_audios", exist_ok=True)
     if "coding_mode" not in st.session_state:
         st.session_state.coding_mode = False
     if "instructions_acknowledged" not in st.session_state:
@@ -284,6 +292,8 @@ def main():
                 st.session_state.interview_active = False
                 st.session_state.cv_text = ""
                 st.session_state.instructions_acknowledged = False # Reset instructions acknowledgment
+                st.session_state.audio_history_paths = [] # Clear audio history
+                st.session_state.audios_uploaded = False # Reset upload status
                 # Re-init orchestrator logic
                 st.session_state.orchestrator_v3 = Orchestrator()
                 st.rerun()
@@ -358,6 +368,17 @@ def main():
                      greeting_audio = None
             
             st.session_state.chat_history.append(("assistant", greeting_msg, greeting_audio))
+            
+            # Phase 2: Save Auto-Greeting Target
+            if greeting_audio:
+                try:
+                    ai_audio_path = os.path.join("temp_audios", "turn_0_ai.mp3")
+                    with open(ai_audio_path, 'wb') as f:
+                        f.write(greeting_audio)
+                    st.session_state.audio_history_paths.append({"path": ai_audio_path, "turn": 0, "speaker": "AI"})
+                except Exception as e:
+                    print(f"[Warning] Failed to save Turn 0 AI audio: {e}")
+            
             st.rerun()
             
         # Display Chat History
@@ -379,6 +400,26 @@ def main():
                 st.error("Termination Reason: Conduct Violation or Time Exceeded with no answers.")
                 
              st.warning("Please reset the interview to try again (if allowed).")
+             
+             # Phase 2: Autonomous GDrive Upload on Termination
+             if not st.session_state.get("audios_uploaded"):
+                 with st.spinner("☁️ Uploading interview recordings to secure cloud storage..."):
+                     try:
+                         from src.services.gdrive_uploader import upload_to_gdrive
+                         candidate_name = st.session_state.candidate_profile.get("personal_info", {}).get("full_name", "Unknown") if hasattr(st.session_state, "candidate_profile") and st.session_state.candidate_profile else "Candidate"
+                         
+                         for audio_data in st.session_state.get("audio_history_paths", []):
+                             upload_to_gdrive(
+                                 file_path=audio_data["path"],
+                                 candidate_name=candidate_name,
+                                 turn_number=audio_data["turn"],
+                                 speaker=audio_data["speaker"]
+                             )
+                         st.session_state.audios_uploaded = True
+                         st.success("✅ All audio files successfully backed up to Google Drive!")
+                     except Exception as e:
+                         st.error(f"Failed to backup audio recordings to GDrive: {e}")
+                         
              # REMOVED st.stop() to allow the audio Autoplay to evaluate at the bottom.
 
         else:
@@ -413,6 +454,24 @@ def main():
                      # 3. CRITICAL: Clear the audio input widget by bumping the key count
                      # This prevents Streamlit from re-processing the same audio on the next rerun
                      st.session_state.audio_key_count = st.session_state.get('audio_key_count', 0) + 1
+                     
+                     # Phase 2: Save turn audio for backup
+                     turn_num = len(st.session_state.chat_history) // 2 + 1
+                     try:
+                         # Save candidate audio
+                         user_audio_path = os.path.join("temp_audios", f"turn_{turn_num}_candidate.wav")
+                         with open(user_audio_path, 'wb') as f:
+                             f.write(audio_bytes)
+                         st.session_state.audio_history_paths.append({"path": user_audio_path, "turn": turn_num, "speaker": "Candidate"})
+                         
+                         # Save AI response audio
+                         if ai_audio:
+                             ai_audio_path = os.path.join("temp_audios", f"turn_{turn_num}_ai.mp3")
+                             with open(ai_audio_path, 'wb') as f:
+                                 f.write(ai_audio)
+                             st.session_state.audio_history_paths.append({"path": ai_audio_path, "turn": turn_num, "speaker": "AI"})
+                     except Exception as e:
+                         print(f"[Warning] Failed to save turn audio to temp folder: {e}")
                      
                      # Capture and Clear last error for log persistence
                      has_new_error = False
