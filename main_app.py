@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.24 (Phase 2: Permanent Audio Storage 16:50)
+# ExpertBridge AI Interviewer - v4.25 (Phase 2: Manual Data Sync Termination 17:50)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -89,7 +89,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.24 (Phase 2: Permanent Audio Storage 16:50)")
+    st.sidebar.caption("Deployment Version: v4.25 (Phase 2: Manual Data Sync Termination 17:50)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -425,7 +425,17 @@ def main():
         else:
             # Audio Input Options (Only shown if NOT terminated)
             audio_key = f"audio_record_{st.session_state.get('audio_key_count', 0)}"
-            audio_value = st.audio_input("Record your answer", key=audio_key)
+            
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                audio_value = st.audio_input("Record your answer", key=audio_key)
+            with col2:
+                st.write("") # Vertical spacing
+                st.write("")
+                if st.button("🛑 End Early", use_container_width=True, help="Manually terminate the interview and backup recordings"):
+                    st.session_state.orchestrator_v3.phase = "TERMINATED"
+                    st.session_state.chat_history.append(("assistant", "Interview terminated manually by user. Uploading session data...", None))
+                    st.rerun()
 
             if audio_value:
                  with st.spinner("Listening..."):
