@@ -1,5 +1,5 @@
 import streamlit as st
-# ExpertBridge AI Interviewer - v4.22 (O1 Temperature Parse Fix 14:05)
+# ExpertBridge AI Interviewer - v4.23 (Phase 1 UX: Fast Chat & Auto-Greeting 13:40)
 import os
 import json # Added import
 from src.ingestion.cv_parser import parse_cv
@@ -89,7 +89,7 @@ def main():
     st.set_page_config(page_title="ExpertBridge AI Interviewer", page_icon="🤖", layout="wide")
     
     st.sidebar.title("🎤 Control Center")
-    st.sidebar.caption("Deployment Version: v4.22 (O1 Temperature Parse Fix 14:05)")
+    st.sidebar.caption("Deployment Version: v4.23 (Phase 1 UX: Fast Chat & Auto-Greeting 13:40)")
     st.sidebar.divider()
 
     # --- Session State ---
@@ -339,6 +339,27 @@ def main():
         # Feature: Live Performance Dashboard
         render_live_scoring_dashboard()
         
+        # Feature: Turn 0 Auto-Greeting
+        if not st.session_state.chat_history and hasattr(st.session_state.orchestrator_v3, "phase") and st.session_state.orchestrator_v3.phase != "TERMINATED":
+            candidate_name = "Candidate"
+            cand_json = st.session_state.get("candidate_json")
+            if cand_json and "personal_info" in cand_json:
+                candidate_name = cand_json["personal_info"].get("full_name", candidate_name)
+            
+            greeting_msg = f"Hello {candidate_name}. I have reviewed your profile and projects. To begin, please click the microphone icon below and provide a brief, one-line introduction of yourself."
+            
+            with st.spinner("Preparing interview environment..."):
+                 try:
+                     voice_model = st.session_state.get("voice_model", "en-US-AvaMultilingualNeural")
+                     # Utilize the Orchestrator's internal speaker to generate Turn 0 audio
+                     greeting_audio = st.session_state.orchestrator_v3.speaker.text_to_speech(greeting_msg, voice_model=voice_model)
+                 except Exception as e:
+                     print(f"[Auto-Greeting Error] {e}")
+                     greeting_audio = None
+            
+            st.session_state.chat_history.append(("assistant", greeting_msg, greeting_audio))
+            st.rerun()
+            
         # Display Chat History
         for sender, message, _ in st.session_state.chat_history:
              with st.chat_message(sender):
